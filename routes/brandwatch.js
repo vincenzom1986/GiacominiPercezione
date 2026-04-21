@@ -16,7 +16,7 @@ async function getBearerToken() {
   params.append('password', BRANDWATCH_PASSWORD);
   params.append('client_id', 'brandwatch-api-client');
 
-  const res = await axios.post(`${BASE}/oauth/token`, params.toString(), {
+  const res = await axios.post(BASE + '/oauth/token', params.toString(), {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
 
@@ -40,24 +40,25 @@ router.get('/', async (req, res) => {
     const endDate = new Date().toISOString().split('T')[0];
     const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    const [mentionsRes, sentimentRes, mentionsDetailRes] = await Promise.all([
+    const queriesRes = await axios.get(BASE + '/projects/' + projectId + '/queries', { headers });
+    const queries = queriesRes.data.results || queriesRes.data.queries || [];
+    console.log('Brandwatch queries found:', queries.length);
+
+    const queryIds = queries.map(q => q.id).join(',');
+
+    const [volumeRes, sentimentRes] = await Promise.all([
       axios.get(BASE + '/projects/' + projectId + '/data/volume', {
         headers,
-        params: { startDate, endDate, granularity: 'days' },
+        params: { startDate, endDate, granularity: 'days', queryId: queryIds || undefined },
       }),
       axios.get(BASE + '/projects/' + projectId + '/data/sentiment', {
         headers,
-        params: { startDate, endDate },
-      }),
-      axios.get(BASE + '/projects/' + projectId + '/data/mentions', {
-        headers,
-        params: { startDate, endDate, pageSize: 5, orderBy: 'date', orderDirection: 'desc' },
+        params: { startDate, endDate, queryId: queryIds || undefined },
       }),
     ]);
 
-    const volumeData = mentionsRes.data;
+    const volumeData = volumeRes.data;
     const sentimentData = sentimentRes.data;
-    const mentionsData = mentionsDetailRes.data;
 
     const totalMentions = volumeData.dailyData
       ? volumeData.dailyData.reduce((sum, d) => sum + (d.numberOfMentions || 0), 0)
@@ -73,13 +74,6 @@ router.get('/', async (req, res) => {
     }
     const sentimentTotal = sentimentCounts.positive + sentimentCounts.neutral + sentimentCounts.negative || 1;
 
-    const recentPosts = (mentionsData.results || []).slice(0, 5).map(m => ({
-      text: m.snippet || m.title || '',
-      source: m.domain || m.authorName || 'Web',
-      sentiment: m.sentiment || 'neutral',
-      url: m.url || '',
-    }));
-
     res.json({
       mock: false,
       data: {
@@ -91,12 +85,13 @@ router.get('/', async (req, res) => {
         },
         sov: getMockData().sov,
         topSources: getMockData().topSources,
-        recentPosts,
+        recentPosts: getMockData().recentPosts,
       },
     });
   } catch (err) {
-    console.error('Brandwatch error:', err.response ? JSON.stringify(err.response.data) : err.message);
-    res.json({ mock: true, error: err.message, data: getMockData() });
+    const errMsg = err.response ? JSON.stringify(err.response.data) : err.message;
+    console.error('Brandwatch error:', errMsg);
+    res.json({ mock: true, error: errMsg, data: getMockData() });
   }
 });
 
@@ -125,4 +120,3 @@ function getMockData() {
 }
 
 module.exports = router;
-
