@@ -1,22 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const Anthropic = require('@anthropic-ai/sdk');
+const { OpenAI } = require('openai');
 
-const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
+});
 
 router.post('/', async (req, res) => {
   const { brandwatch, trends, survey } = req.body;
-
   const prompt = buildPrompt(brandwatch, trends, survey);
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    const response = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    res.json({ synthesis: response.content[0].text });
+    res.json({ synthesis: response.choices[0].message.content });
   } catch (err) {
     console.error('Synthesis error:', err);
     res.status(500).json({ error: 'Errore nella generazione della sintesi' });
@@ -24,35 +26,24 @@ router.post('/', async (req, res) => {
 });
 
 function buildPrompt(bw, trends, survey) {
-  return `Sei un analista di brand marketing specializzato nel settore idrotermosanitario italiano.
-Analizza i seguenti dati raccolti su Giacomini e produci una sintesi professionale in italiano.
-
-## DATI SOCIAL LISTENING (Brandwatch)
-${JSON.stringify(bw, null, 2)}
-
-## DATI SEARCH DEMAND (Google Trends - ultimi 12 mesi, Italia)
-${JSON.stringify(trends, null, 2)}
-
-## DATI SURVEY (risposte di installatori e idraulici)
-Totale risposte: ${survey?.total || 0}
-Completate: ${survey?.completed || 0}
-Distribuzione per tipo installazioni: ${JSON.stringify(survey?.byType || [])}
-Prima associazione con il brand: ${JSON.stringify(survey?.byAssociation || [])}
-Valutazione vs competitor: ${JSON.stringify(survey?.byRating || [])}
-
-Risposte qualitative recenti:
-${(survey?.allCompleted || []).slice(0, 10).map(r => `- Tipo: ${r.tipo_installazioni} | Delusioni: ${r.delusioni_miglioramenti || 'n.d.'} | Commento: ${r.commento_libero || 'n.d.'}`).join('\n')}
-
-## ISTRUZIONI
-Produci una sintesi strutturata con queste sezioni:
-### 1. Percezione generale del brand
-### 2. Punti di forza emergenti
-### 3. Aree di miglioramento
-### 4. Posizionamento vs competitor
-### 5. Segnali di tendenza
-### 6. Raccomandazioni strategiche
-
-Sii diretto, concreto, usa i dati numerici dove disponibili. Tono professionale ma accessibile.`;
+  return 'Sei un analista di brand marketing specializzato nel settore idrotermosanitario italiano.\n' +
+    'Analizza i seguenti dati raccolti su Giacomini e produci una sintesi professionale in italiano.\n\n' +
+    '## DATI SOCIAL LISTENING\n' + JSON.stringify(bw, null, 2) + '\n\n' +
+    '## DATI GOOGLE TRENDS\n' + JSON.stringify(trends, null, 2) + '\n\n' +
+    '## DATI SURVEY\n' +
+    'Totale risposte: ' + (survey?.total || 0) + '\n' +
+    'Completate: ' + (survey?.completed || 0) + '\n' +
+    'Prima associazione: ' + JSON.stringify(survey?.byAssociation || []) + '\n' +
+    'Valutazione vs competitor: ' + JSON.stringify(survey?.byRating || []) + '\n\n' +
+    '## ISTRUZIONI\n' +
+    'Produci una sintesi con:\n' +
+    '### 1. Percezione generale del brand\n' +
+    '### 2. Punti di forza emergenti\n' +
+    '### 3. Aree di miglioramento\n' +
+    '### 4. Posizionamento vs competitor\n' +
+    '### 5. Segnali di tendenza\n' +
+    '### 6. Raccomandazioni strategiche\n\n' +
+    'Sii diretto, concreto, usa dati numerici. Tono professionale ma accessibile.';
 }
 
 module.exports = router;

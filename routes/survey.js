@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Anthropic = require('@anthropic-ai/sdk');
+const { OpenAI } = require('openai');
 const Database = require('better-sqlite3');
 const path = require('path');
 
@@ -23,7 +23,10 @@ db.exec(`
   )
 `);
 
-const client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
+});
 
 const SYSTEM_PROMPT = `Sei un intervistatore professionale che raccoglie feedback da installatori e idraulici italiani sulla percezione del brand Giacomini.
 
@@ -71,7 +74,8 @@ REGOLE IMPORTANTI:
 - Rispondi SEMPRE in italiano
 - Sii cordiale ma professionale
 - Per le domande chiuse, accetta sia il numero che il testo dell'opzione
-- Dopo la domanda 7 e la risposta dell'utente, concludi con un messaggio di ringraziamento finale e la parola chiave [SURVEY_COMPLETE]
+- La domanda 7 va posta come semplice domanda aperta, SENZA aggiungere ringraziamenti o [SURVEY_COMPLETE] nella stessa risposta
+- SOLO DOPO che l utente ha risposto alla domanda 7, invia un breve messaggio di ringraziamento e metti [SURVEY_COMPLETE] alla fine di quel messaggio
 - Non aggiungere commenti o analisi alle risposte dell'utente, passa semplicemente alla domanda successiva
 - Tieni traccia internamente di quale domanda stai ponendo (1-7)`;
 
@@ -82,7 +86,7 @@ router.post('/message', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
 
   if (!sessions.has(sessionId)) {
-    sessions.set(sessionId, { messages: [], questionIndex: 0 });
+    sessions.set(sessionId, { messages: [] });
     db.prepare('INSERT OR IGNORE INTO responses (session_id) VALUES (?)').run(sessionId);
   }
 
@@ -93,14 +97,13 @@ router.post('/message', async (req, res) => {
   }
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+    const response = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: session.messages,
+      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...session.messages],
     });
 
-    const assistantText = response.content[0].text;
+    const assistantText = response.choices[0].message.content;
     session.messages.push({ role: 'assistant', content: assistantText });
 
     const isComplete = assistantText.includes('[SURVEY_COMPLETE]');

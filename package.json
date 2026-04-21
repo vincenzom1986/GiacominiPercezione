@@ -2,13 +2,16 @@
   "name": "giacominipercezione",
   "version": "1.0.0",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
     "axios": "^1.15.1",
     "better-sqlite3": "^12.9.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^16.6.1",
     "express": "^5.2.1",
-    "google-trends-api": "^4.9.2"
+    "google-trends-api": "^4.9.2",
+    "openai": "^6.34.0"
   }
 }
