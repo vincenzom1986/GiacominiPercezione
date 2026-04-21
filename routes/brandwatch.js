@@ -44,18 +44,20 @@ router.get('/', async (req, res) => {
     const queries = queriesRes.data.results || queriesRes.data.queries || [];
     console.log('Brandwatch queries found:', queries.length);
 
-    const queryIds = queries.map(q => q.id).join(',');
+    const firstQueryId = queries[0]?.id;
+console.log('Using queryId:', firstQueryId);
 
-    const [volumeRes, sentimentRes] = await Promise.all([
-      axios.get(BASE + '/projects/' + projectId + '/data/volume', {
-        headers,
-        params: { startDate, endDate, granularity: 'days', queryId: queryIds || undefined },
-      }),
-      axios.get(BASE + '/projects/' + projectId + '/data/sentiment', {
-        headers,
-        params: { startDate, endDate, queryId: queryIds || undefined },
-      }),
-    ]);
+const [volumeRes, sentimentRes] = await Promise.all([
+  axios.get(BASE + '/projects/' + projectId + '/data/volume', {
+    headers,
+    params: { startDate, endDate, granularity: 'days', queryId: firstQueryId },
+  }),
+  axios.get(BASE + '/projects/' + projectId + '/data/sentiment', {
+    headers,
+    params: { startDate, endDate, queryId: firstQueryId },
+  }),
+]);
+
 
     const volumeData = volumeRes.data;
     const sentimentData = sentimentRes.data;
