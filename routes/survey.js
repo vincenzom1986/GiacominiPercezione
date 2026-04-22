@@ -219,7 +219,7 @@ router.post('/message', async (req, res) => {
     const isComplete = assistantText.includes('[SURVEY_COMPLETE]');
 
     if (isComplete) {
-      const dataMatch = assistantText.match(/\[DATA:(.*?)\]$/s);
+      const dataMatch = assistantText.match(/\[DATA:(\{[\s\S]*?\})\]/);
       if (dataMatch) {
         try {
           const data = JSON.parse(dataMatch[1]);
@@ -235,7 +235,7 @@ router.post('/message', async (req, res) => {
 
     const displayText = assistantText
       .replace('[SURVEY_COMPLETE]', '')
-      .replace(/\[DATA:.*?\]$/s, '')
+      .replace(/\[DATA:\{[\s\S]*?\}\]/, '')
       .trim();
 
     res.json({ reply: displayText, complete: isComplete });
