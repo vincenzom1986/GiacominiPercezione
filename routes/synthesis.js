@@ -36,13 +36,12 @@ ${JSON.stringify(bw, null, 2)}
 ## DATI SURVEY (risposte di installatori e idraulici)
 Totale risposte: ${survey?.total || 0}
 Completate: ${survey?.completed || 0}
-NPS medio: ${survey?.avgNps || 'n.d.'}
 Distribuzione per tipo installazioni: ${JSON.stringify(survey?.byType || [])}
 Prima associazione con il brand: ${JSON.stringify(survey?.byAssociation || [])}
-NPS distribution: ${JSON.stringify(survey?.byRating || [])}
+Valutazione vs competitor: ${JSON.stringify(survey?.byRating || [])}
 
 Risposte qualitative recenti:
-${(survey?.allCompleted || []).slice(0, 10).map(r => `- Tipo: ${r.tipo_installazioni} | Associazione: ${r.prima_associazione || 'n.d.'} | NPS: ${r.nps ?? 'n.d.'} | Uso: ${r.uso_prodotti || 'n.d.'} | Barriera: ${r.barriera_non_utilizzo || 'n.d.'} | Canale info: ${r.canali_informazione || 'n.d.'}`).join('\n')}
+${(survey?.allCompleted || []).slice(0, 10).map(r => `- Tipo: ${r.tipo_installazioni} | Delusioni/miglioramenti: ${r.delusioni_miglioramenti || 'n.d.'} | Commento: ${r.commento_libero || 'n.d.'}`).join('\n')}
 
 ## ISTRUZIONI
 Produci una sintesi strutturata con queste sezioni:
@@ -66,4 +65,3 @@ Sii diretto, concreto e usa i dati numerici dove disponibili. Tono professionale
 }
 
 module.exports = router;
-

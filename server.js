@@ -15,8 +15,8 @@ app.use('/api/survey', surveyRouter);
 app.use('/api/brandwatch', brandwatchRouter);
 app.use('/api/trends', trendsRouter);
 app.use('/api/synthesis', synthesisRouter);
-app.get('/', (req, res) => res.redirect('/survey'));
 
+app.get('/', (req, res) => res.redirect('/survey'));
 app.get('/survey', (req, res) => res.sendFile(path.join(__dirname, 'public', 'survey.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 

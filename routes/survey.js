@@ -37,6 +37,7 @@ db.exec(`
   )
 `);
 
+// Migrate existing table: add new columns if missing
 const existingCols = db.prepare('PRAGMA table_info(responses)').all().map(c => c.name);
 const newCols = [
   ['prodotti_usati', 'TEXT'], ['valutazione_qualita', 'INTEGER'],
@@ -282,7 +283,7 @@ router.get('/results', (req, res) => {
   const completed = db.prepare('SELECT COUNT(*) as count FROM responses WHERE completed = 1').get().count;
 
   const recent = db.prepare(`
-    SELECT id, created_at, tipo_installazioni, prima_associazione, nps, uso_prodotti, completed
+    SELECT id, created_at, tipo_installazioni, prima_associazione, nps, uso_prodotti, regione, anni_attivita, completed
     FROM responses ORDER BY created_at DESC LIMIT 20
   `).all();
 
@@ -315,10 +316,47 @@ router.get('/results', (req, res) => {
     SELECT ROUND(AVG(nps), 1) as avg FROM responses WHERE completed = 1 AND nps IS NOT NULL
   `).get().avg;
 
+  const avgValutazioni = db.prepare(`
+    SELECT
+      ROUND(AVG(valutazione_qualita), 1) as qualita,
+      ROUND(AVG(valutazione_facilita), 1) as facilita,
+      ROUND(AVG(valutazione_prezzo), 1) as prezzo,
+      ROUND(AVG(valutazione_disponibilita), 1) as disponibilita,
+      ROUND(AVG(valutazione_assistenza), 1) as assistenza,
+      ROUND(AVG(valutazione_formazione), 1) as formazione
+    FROM responses WHERE completed = 1
+  `).get();
+
+  const byBarriera = db.prepare(`
+    SELECT barriera_non_utilizzo as label, COUNT(*) as count
+    FROM responses WHERE completed = 1 AND barriera_non_utilizzo IS NOT NULL
+    GROUP BY barriera_non_utilizzo ORDER BY count DESC
+  `).all();
+
+  const byLeva = db.prepare(`
+    SELECT leva_attivazione as label, COUNT(*) as count
+    FROM responses WHERE completed = 1 AND leva_attivazione IS NOT NULL
+    GROUP BY leva_attivazione ORDER BY count DESC
+  `).all();
+
+  const byRegione = db.prepare(`
+    SELECT regione as label, COUNT(*) as count
+    FROM responses WHERE completed = 1 AND regione IS NOT NULL
+    GROUP BY regione ORDER BY count DESC
+  `).all();
+
+  const byAnni = db.prepare(`
+    SELECT anni_attivita as label, COUNT(*) as count
+    FROM responses WHERE completed = 1 AND anni_attivita IS NOT NULL
+    GROUP BY anni_attivita ORDER BY count DESC
+  `).all();
+
   const allCompleted = db.prepare('SELECT * FROM responses WHERE completed = 1').all();
 
-  res.json({ total, completed, recent, byType, byAssociation, byRating, avgNps, allCompleted });
+  res.json({
+    total, completed, recent, byType, byAssociation, byRating,
+    avgNps, avgValutazioni, byBarriera, byLeva, byRegione, byAnni, allCompleted,
+  });
 });
 
 module.exports = router;
-

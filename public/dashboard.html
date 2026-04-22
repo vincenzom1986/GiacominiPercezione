@@ -7,124 +7,386 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f6fb; color: #1a1a2e; }
-    header { background: #003087; color: #fff; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f6fb;
+      color: #1a1a2e;
+    }
+
+    header {
+      background: #003087;
+      color: #fff;
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
     header h1 { font-size: 20px; font-weight: 700; }
     header .tag { font-size: 12px; background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 12px; }
-    .tabs { display: flex; background: #fff; border-bottom: 2px solid #e5e8f0; padding: 0 28px; }
-    .tab { padding: 14px 24px; cursor: pointer; font-size: 14px; font-weight: 600; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 2px solid #e5e8f0;
+      padding: 0 28px;
+    }
+
+    .tab {
+      padding: 14px 24px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.15s;
+    }
+
     .tab.active { color: #003087; border-bottom-color: #003087; }
     .tab:hover { color: #003087; }
+
     .tab-content { display: none; padding: 28px; max-width: 1200px; margin: 0 auto; }
     .tab-content.active { display: block; }
-    .section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-    .section-title { font-size: 16px; font-weight: 700; color: #003087; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-    .section-title .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #e8eeff; color: #003087; }
-    .mock-notice { font-size: 12px; color: #f59e0b; background: #fef3c7; border: 1px solid #f59e0b; padding: 6px 12px; border-radius: 6px; margin-bottom: 16px; display: none; }
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: #f8faff; border-radius: 10px; padding: 16px 20px; text-align: center; }
+
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #003087;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #e8eeff;
+      color: #003087;
+    }
+
+    .mock-notice {
+      font-size: 12px;
+      color: #f59e0b;
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: #f8faff;
+      border-radius: 10px;
+      padding: 16px 20px;
+      text-align: center;
+    }
+
     .stat-card .value { font-size: 28px; font-weight: 700; color: #003087; }
     .stat-card .label { font-size: 12px; color: #666; margin-top: 4px; }
+
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
     .chart-wrap { position: relative; height: 240px; }
+
     .posts-list { display: flex; flex-direction: column; gap: 12px; }
-    .post-item { border-left: 3px solid #e5e8f0; padding: 10px 14px; border-radius: 0 8px 8px 0; background: #f8faff; font-size: 14px; }
+
+    .post-item {
+      border-left: 3px solid #e5e8f0;
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      background: #f8faff;
+      font-size: 14px;
+    }
+
     .post-item.positive { border-left-color: #22c55e; }
     .post-item.negative { border-left-color: #ef4444; }
-    .post-item.neutral { border-left-color: #94a3b8; }
+    .post-item.neutral  { border-left-color: #94a3b8; }
+
     .post-source { font-size: 11px; color: #888; margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { text-align: left; padding: 8px 12px; background: #f1f4f9; font-weight: 600; font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+
+    .sub-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 12px;
+      color: #555;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      background: #f1f4f9;
+      font-weight: 600;
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; }
     tr:last-child td { border-bottom: none; }
-    .pill { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
     .pill.completed { background: #dcfce7; color: #16a34a; }
-    .pill.pending { background: #fef9c3; color: #a16207; }
-    #generate-btn { background: #003087; color: #fff; border: none; padding: 12px 28px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .pill.pending   { background: #fef9c3; color: #a16207; }
+
+    .simple-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .simple-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8faff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .simple-count {
+      background: #003087;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    #generate-btn {
+      background: #003087;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
     #generate-btn:hover { background: #0044c8; }
     #generate-btn:disabled { background: #9aafcc; cursor: not-allowed; }
-    #synthesis-output { margin-top: 24px; background: #f8faff; border-radius: 10px; padding: 24px; font-size: 15px; line-height: 1.7; display: none; }
-    #synthesis-output h3 { font-size: 16px; color: #003087; margin-top: 20px; margin-bottom: 8px; }
+
+    #synthesis-output {
+      margin-top: 24px;
+      background: #f8faff;
+      border-radius: 10px;
+      padding: 24px;
+      font-size: 15px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    #synthesis-output h3 {
+      font-size: 16px;
+      color: #003087;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
     #synthesis-output h3:first-child { margin-top: 0; }
-    .loading-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
     @keyframes spin { to { transform: rotate(360deg); } }
+
     .sov-bar { display: flex; flex-direction: column; gap: 10px; }
+
     .sov-item { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-    .sov-item .brand-name { width: 120px; flex-shrink: 0; }
+    .sov-item .brand-name { width: 130px; flex-shrink: 0; }
     .sov-item .bar-track { flex: 1; background: #e5e8f0; border-radius: 4px; height: 14px; overflow: hidden; }
     .sov-item .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
     .sov-item .pct { width: 36px; text-align: right; font-weight: 700; color: #003087; }
+
     .bar-fill.giacomini { background: #003087; }
     .bar-fill.competitor { background: #94a3b8; }
-    .trends-queries { display: flex; flex-wrap: wrap; gap: 8px; }
-    .query-tag { background: #e8eeff; color: #003087; padding: 5px 12px; border-radius: 16px; font-size: 13px; font-weight: 600; }
-    .query-tag .growth { font-weight: 400; color: #16a34a; }
-    .last-update { font-size: 12px; color: #aaa; margin-top: 4px; }
-    .col-label { font-weight: 600; font-size: 13px; margin-bottom: 12px; color: #555; }
+
+    .last-update { font-size: 12px; color: #aaa; margin-top: 16px; }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid #f0f0f0;
+      margin: 24px 0;
+    }
   </style>
 </head>
 <body>
+
 <header>
   <h1>Giacomini — Brand Perception Dashboard</h1>
   <span class="tag">Admin</span>
 </header>
+
 <div class="tabs">
   <div class="tab active" data-tab="data">Dati</div>
   <div class="tab" data-tab="synthesis">Sintesi AI</div>
 </div>
+
+<!-- TAB 1: DATI -->
 <div class="tab-content active" id="tab-data">
+
+  <!-- Survey -->
   <div class="section">
     <div class="section-title">Survey installatori <span class="badge" id="survey-badge">–</span></div>
+
     <div class="stats-row">
       <div class="stat-card"><div class="value" id="stat-total">–</div><div class="label">Risposte totali</div></div>
       <div class="stat-card"><div class="value" id="stat-completed">–</div><div class="label">Completate</div></div>
       <div class="stat-card"><div class="value" id="stat-rate">–</div><div class="label">Tasso completamento</div></div>
+      <div class="stat-card"><div class="value" id="stat-nps">–</div><div class="label">NPS medio</div></div>
     </div>
+
+    <!-- Prima associazione + NPS -->
     <div class="grid-2">
-      <div><div class="col-label">Prima associazione con il brand</div><div class="chart-wrap"><canvas id="chart-association"></canvas></div></div>
-      <div><div class="col-label">Valutazione vs competitor</div><div class="chart-wrap"><canvas id="chart-rating"></canvas></div></div>
+      <div>
+        <div class="sub-title">Prima associazione con il brand</div>
+        <div class="chart-wrap"><canvas id="chart-association"></canvas></div>
+      </div>
+      <div>
+        <div class="sub-title">NPS installatori (Promotori / Passivi / Detrattori)</div>
+        <div class="chart-wrap"><canvas id="chart-rating"></canvas></div>
+      </div>
     </div>
-    <div style="margin-top:24px">
-      <div class="col-label">Risposte recenti</div>
-      <table><thead><tr><th>Data</th><th>Tipo</th><th>Associazione</th><th>Valutazione</th><th>Stato</th></tr></thead>
-      <tbody id="survey-tbody"></tbody></table>
+
+    <hr class="section-divider">
+
+    <!-- Valutazioni dimensionali -->
+    <div>
+      <div class="sub-title">Valutazioni dimensionali — utilizzatori (media su scala 1–5)</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="chart-valutazioni"></canvas></div>
     </div>
+
+    <hr class="section-divider">
+
+    <!-- Regione + Anni -->
+    <div class="grid-2">
+      <div>
+        <div class="sub-title">Area geografica</div>
+        <div class="chart-wrap"><canvas id="chart-regione"></canvas></div>
+      </div>
+      <div>
+        <div class="sub-title">Anni di attività</div>
+        <div class="chart-wrap"><canvas id="chart-anni"></canvas></div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Barriere + Leve (non utilizzatori) -->
+    <div class="grid-2">
+      <div>
+        <div class="sub-title">Barriere all'utilizzo (non utilizzatori)</div>
+        <div class="simple-list" id="list-barriere"></div>
+      </div>
+      <div>
+        <div class="sub-title">Leve di attivazione (non utilizzatori)</div>
+        <div class="simple-list" id="list-leve"></div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Recent table -->
+    <div>
+      <div class="sub-title">Risposte recenti</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Associazione</th>
+            <th>NPS</th>
+            <th>Uso Giacomini</th>
+            <th>Regione</th>
+            <th>Stato</th>
+          </tr>
+        </thead>
+        <tbody id="survey-tbody"></tbody>
+      </table>
+    </div>
+
     <div class="last-update" id="survey-update"></div>
   </div>
+
+  <!-- Social Listening -->
   <div class="section">
-    <div class="section-title">Social Listening <span class="badge">Brandwatch</span></div>
-    <div class="mock-notice" id="bw-mock">Dati demo — configura BRANDWATCH_API_KEY nel .env per dati reali</div>
+    <div class="section-title">Social Listening <span class="badge" id="bw-badge">Brandwatch</span></div>
+    <div class="mock-notice" id="bw-mock">Dati demo — configura le variabili Brandwatch su Railway per dati reali</div>
     <div class="stats-row">
       <div class="stat-card"><div class="value" id="stat-mentions">–</div><div class="label">Mention (30gg)</div></div>
       <div class="stat-card"><div class="value" id="stat-pos">–</div><div class="label">Sentiment positivo</div></div>
       <div class="stat-card"><div class="value" id="stat-neg">–</div><div class="label">Sentiment negativo</div></div>
     </div>
     <div class="grid-2">
-      <div><div class="col-label">Share of Voice vs competitor</div><div class="sov-bar" id="sov-bar"></div></div>
-      <div><div class="col-label">Sentiment</div><div class="chart-wrap"><canvas id="chart-sentiment"></canvas></div></div>
+      <div>
+        <div class="sub-title">Share of Voice vs competitor</div>
+        <div class="sov-bar" id="sov-bar"></div>
+      </div>
+      <div>
+        <div class="sub-title">Sentiment</div>
+        <div class="chart-wrap"><canvas id="chart-sentiment"></canvas></div>
+      </div>
     </div>
-    <div style="margin-top:24px"><div class="col-label">Post rilevanti recenti</div><div class="posts-list" id="posts-list"></div></div>
-  </div>
-  <div class="section">
-    <div class="section-title">Search Demand <span class="badge">Google Trends</span></div>
-    <div class="mock-notice" id="trends-mock">Dati demo — Google Trends potrebbe non essere disponibile in tutti gli ambienti</div>
-    <div><div class="col-label">Interesse di ricerca ultimi 12 mesi (Italia)</div><div class="chart-wrap" style="height:280px"><canvas id="chart-trends"></canvas></div></div>
-    <div class="grid-2" style="margin-top:20px">
-      <div><div class="col-label">Query in crescita</div><div class="trends-queries" id="trends-rising"></div></div>
-      <div><div class="col-label">Top query correlate</div><div class="trends-queries" id="trends-top"></div></div>
+    <div style="margin-top:24px">
+      <div class="sub-title">Post rilevanti recenti</div>
+      <div class="posts-list" id="posts-list"></div>
     </div>
   </div>
+
 </div>
+
+<!-- TAB 2: SINTESI AI -->
 <div class="tab-content" id="tab-synthesis">
   <div class="section">
     <div class="section-title">Sintesi AI</div>
-    <p style="font-size:14px;color:#555;margin-bottom:20px">Claude analizza tutti i dati disponibili e produce una sintesi strategica sulla percezione del brand Giacomini.</p>
+    <p style="font-size:14px;color:#555;margin-bottom:20px">
+      L'AI analizza tutti i dati disponibili (survey e social listening) e produce una sintesi strategica sulla percezione del brand Giacomini.
+    </p>
     <button id="generate-btn">Genera sintesi</button>
     <div id="synthesis-output"></div>
   </div>
 </div>
+
 <script>
+  // --- Tabs ---
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -134,106 +396,220 @@
     });
   });
 
-  let chartAssociation, chartRating, chartSentiment, chartTrends;
-  const COLORS_BRAND = ['#003087','#0044c8','#3b82f6','#93c5fd','#bfdbfe'];
-  const COLORS_RATING = ['#22c55e','#86efac','#94a3b8','#fca5a5','#ef4444'];
+  // --- Chart instances ---
+  let chartAssociation = null;
+  let chartRating = null;
+  let chartSentiment = null;
+  let chartValutazioni = null;
+  let chartRegione = null;
+  let chartAnni = null;
+
+  const COLORS_BRAND = ['#003087','#0044c8','#3b82f6','#93c5fd','#bfdbfe','#dbeafe'];
+  const COLORS_GEO   = ['#003087','#0f52ba','#4472c4','#7eaadb'];
 
   function makeChart(id, type, labels, datasets, options = {}) {
-    const ctx = document.getElementById(id).getContext('2d');
-    return new Chart(ctx, { type, data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } }, ...options } });
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const ctx = el.getContext('2d');
+    return new Chart(ctx, {
+      type,
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+        ...options,
+      },
+    });
   }
 
+  function renderSimpleList(elId, items, emptyMsg) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!items || items.length === 0) {
+      el.innerHTML = `<div style="color:#aaa;font-size:13px">${emptyMsg || 'Nessun dato'}</div>`;
+      return;
+    }
+    el.innerHTML = items.map(item =>
+      `<div class="simple-item"><span>${item.label || item}</span><span class="simple-count">${item.count}</span></div>`
+    ).join('');
+  }
+
+  // --- Survey ---
   async function loadSurvey() {
     try {
-      const d = await fetch('/api/survey/results').then(r => r.json());
+      const res = await fetch('/api/survey/results');
+      const d = await res.json();
+
       document.getElementById('stat-total').textContent = d.total;
       document.getElementById('stat-completed').textContent = d.completed;
       document.getElementById('survey-badge').textContent = d.completed + ' risposte';
-      document.getElementById('stat-rate').textContent = d.total > 0 ? Math.round((d.completed / d.total) * 100) + '%' : '–';
+      const rate = d.total > 0 ? Math.round((d.completed / d.total) * 100) + '%' : '–';
+      document.getElementById('stat-rate').textContent = rate;
+      document.getElementById('stat-nps').textContent = d.avgNps !== null && d.avgNps !== undefined ? d.avgNps : '–';
+
+      // Prima associazione
       if (chartAssociation) chartAssociation.destroy();
-      chartAssociation = makeChart('chart-association', 'doughnut', d.byAssociation.map(x => x.prima_associazione || 'n.d.'), [{ data: d.byAssociation.map(x => x.count), backgroundColor: COLORS_BRAND, borderWidth: 2 }]);
+      chartAssociation = makeChart('chart-association', 'doughnut',
+        (d.byAssociation || []).map(x => x.prima_associazione || 'n.d.'),
+        [{ data: (d.byAssociation || []).map(x => x.count), backgroundColor: COLORS_BRAND, borderWidth: 2 }]
+      );
+
+      // NPS distribution
       if (chartRating) chartRating.destroy();
-      chartRating = makeChart('chart-rating', 'bar', d.byRating.map(x => x.valutazione_competitor || 'n.d.'), [{ label: 'Risposte', data: d.byRating.map(x => x.count), backgroundColor: COLORS_RATING, borderRadius: 6 }], { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } });
+      chartRating = makeChart('chart-rating', 'doughnut',
+        (d.byRating || []).map(x => x.valutazione_competitor || 'n.d.'),
+        [{ data: (d.byRating || []).map(x => x.count),
+           backgroundColor: ['#22c55e','#f59e0b','#ef4444','#94a3b8'], borderWidth: 2 }]
+      );
+
+      // Valutazioni dimensionali
+      if (d.avgValutazioni) {
+        const v = d.avgValutazioni;
+        const dimLabels = ['Qualità materiali','Facilità instal.','Qualità/prezzo','Disponibilità','Assistenza','Formazione'];
+        const dimData = [v.qualita, v.facilita, v.prezzo, v.disponibilita, v.assistenza, v.formazione].map(x => x || 0);
+        if (chartValutazioni) chartValutazioni.destroy();
+        chartValutazioni = makeChart('chart-valutazioni', 'bar', dimLabels,
+          [{ label: 'Media (1–5)', data: dimData, backgroundColor: '#003087cc', borderRadius: 6 }],
+          {
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } },
+          }
+        );
+      }
+
+      // Regione
+      if (chartRegione) chartRegione.destroy();
+      chartRegione = makeChart('chart-regione', 'doughnut',
+        (d.byRegione || []).map(x => x.label || 'n.d.'),
+        [{ data: (d.byRegione || []).map(x => x.count), backgroundColor: COLORS_GEO, borderWidth: 2 }]
+      );
+
+      // Anni attività
+      if (chartAnni) chartAnni.destroy();
+      chartAnni = makeChart('chart-anni', 'doughnut',
+        (d.byAnni || []).map(x => x.label || 'n.d.'),
+        [{ data: (d.byAnni || []).map(x => x.count), backgroundColor: ['#003087','#3b82f6','#93c5fd'], borderWidth: 2 }]
+      );
+
+      // Barriere e leve
+      renderSimpleList('list-barriere', d.byBarriera, 'Nessuna risposta da non utilizzatori');
+      renderSimpleList('list-leve', d.byLeva, 'Nessuna risposta da non utilizzatori');
+
+      // Recent table
       const tbody = document.getElementById('survey-tbody');
       tbody.innerHTML = '';
-      d.recent.forEach(r => {
+      (d.recent || []).forEach(r => {
+        const tr = document.createElement('tr');
         const date = new Date(r.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-        tbody.innerHTML += '<tr><td>' + date + '</td><td>' + (r.tipo_installazioni || '–') + '</td><td>' + (r.prima_associazione || '–') + '</td><td>' + (r.valutazione_competitor || '–') + '</td><td><span class="pill ' + (r.completed ? 'completed' : 'pending') + '">' + (r.completed ? 'Completata' : 'In corso') + '</span></td></tr>';
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td>${r.tipo_installazioni || '–'}</td>
+          <td>${r.prima_associazione || '–'}</td>
+          <td>${r.nps !== undefined && r.nps !== null ? r.nps : '–'}</td>
+          <td>${r.uso_prodotti || '–'}</td>
+          <td>${r.regione || '–'}</td>
+          <td><span class="pill ${r.completed ? 'completed' : 'pending'}">${r.completed ? 'Completata' : 'In corso'}</span></td>
+        `;
+        tbody.appendChild(tr);
       });
-      document.getElementById('survey-update').textContent = 'Aggiornato: ' + new Date().toLocaleTimeString('it-IT');
-    } catch(e) { console.error(e); }
+
+      document.getElementById('survey-update').textContent = 'Ultimo aggiornamento: ' + new Date().toLocaleTimeString('it-IT');
+    } catch (e) {
+      console.error('Survey load error:', e);
+    }
   }
 
+  // --- Brandwatch ---
   async function loadBrandwatch() {
     try {
-      const d = await fetch('/api/brandwatch').then(r => r.json());
+      const res = await fetch('/api/brandwatch');
+      const d = await res.json();
       const data = d.data || d;
+
       if (d.mock) document.getElementById('bw-mock').style.display = 'block';
+
       document.getElementById('stat-mentions').textContent = (data.totalMentions || 0).toLocaleString('it-IT');
       document.getElementById('stat-pos').textContent = (data.sentiment?.positive || 0) + '%';
       document.getElementById('stat-neg').textContent = (data.sentiment?.negative || 0) + '%';
+
       const sovEl = document.getElementById('sov-bar');
       sovEl.innerHTML = '';
       (data.sov || []).forEach(item => {
         const isGiac = item.brand.toLowerCase() === 'giacomini';
-        sovEl.innerHTML += '<div class="sov-item"><span class="brand-name">' + item.brand + '</span><div class="bar-track"><div class="bar-fill ' + (isGiac ? 'giacomini' : 'competitor') + '" style="width:' + item.share + '%"></div></div><span class="pct">' + item.share + '%</span></div>';
+        sovEl.innerHTML += `
+          <div class="sov-item">
+            <span class="brand-name">${item.brand}</span>
+            <div class="bar-track">
+              <div class="bar-fill ${isGiac ? 'giacomini' : 'competitor'}" style="width:${item.share}%"></div>
+            </div>
+            <span class="pct">${item.share}%</span>
+          </div>`;
       });
+
       const s = data.sentiment || {};
       if (chartSentiment) chartSentiment.destroy();
-      chartSentiment = makeChart('chart-sentiment', 'doughnut', ['Positivo','Neutro','Negativo'], [{ data: [s.positive||0, s.neutral||0, s.negative||0], backgroundColor: ['#22c55e','#94a3b8','#ef4444'], borderWidth: 2 }]);
+      chartSentiment = makeChart('chart-sentiment', 'doughnut',
+        ['Positivo', 'Neutro', 'Negativo'],
+        [{ data: [s.positive || 0, s.neutral || 0, s.negative || 0],
+           backgroundColor: ['#22c55e', '#94a3b8', '#ef4444'], borderWidth: 2 }]
+      );
+
       const postsEl = document.getElementById('posts-list');
       postsEl.innerHTML = '';
       (data.recentPosts || []).forEach(p => {
-        postsEl.innerHTML += '<div class="post-item ' + p.sentiment + '"><div>' + p.text + '</div><div class="post-source">' + p.source + '</div></div>';
+        postsEl.innerHTML += `
+          <div class="post-item ${p.sentiment}">
+            <div>${p.text}</div>
+            <div class="post-source">${p.source}</div>
+          </div>`;
       });
-    } catch(e) { console.error(e); }
+    } catch (e) {
+      console.error('Brandwatch load error:', e);
+    }
   }
 
-  async function loadTrends() {
-    try {
-      const d = await fetch('/api/trends').then(r => r.json());
-      if (d.mock) document.getElementById('trends-mock').style.display = 'block';
-      const kwColors = ['#003087','#f97316','#22c55e','#8b5cf6'];
-      if (chartTrends) chartTrends.destroy();
-      chartTrends = makeChart('chart-trends', 'line', d.timeline.map(t => t.date),
-        (d.keywords || []).map((kw, i) => ({ label: kw, data: d.timeline.map(t => t.values[i]), borderColor: kwColors[i], backgroundColor: kwColors[i] + '15', fill: false, tension: 0.4, pointRadius: 2 })),
-        { plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, max: 100 }, x: { ticks: { maxRotation: 45 } } } }
-      );
-      const risingEl = document.getElementById('trends-rising');
-      risingEl.innerHTML = '';
-      (d.rising || []).forEach(q => { risingEl.innerHTML += '<span class="query-tag">' + q.query + ' <span class="growth">' + q.value + '</span></span>'; });
-      const topEl = document.getElementById('trends-top');
-      topEl.innerHTML = '';
-      (d.top || []).forEach(q => { topEl.innerHTML += '<span class="query-tag">' + q.query + '</span>'; });
-    } catch(e) { console.error(e); }
-  }
-
+  // --- Synthesis ---
   document.getElementById('generate-btn').addEventListener('click', async () => {
     const btn = document.getElementById('generate-btn');
     const output = document.getElementById('synthesis-output');
+
     btn.disabled = true;
-    btn.innerHTML = '<span class="loading-spinner"></span>Generazione in corso...';
+    btn.innerHTML = '<span class="loading-spinner"></span>Generazione in corso…';
     output.style.display = 'none';
+
     try {
-      const [bwRes, trendsRes, surveyRes] = await Promise.all([
+      const [bwRes, surveyRes] = await Promise.all([
         fetch('/api/brandwatch').then(r => r.json()),
-        fetch('/api/trends').then(r => r.json()),
         fetch('/api/survey/results').then(r => r.json()),
       ]);
-      const data = await fetch('/api/synthesis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ brandwatch: bwRes, trends: trendsRes, survey: surveyRes }) }).then(r => r.json());
+
+      const res = await fetch('/api/synthesis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandwatch: bwRes, survey: surveyRes }),
+      });
+
+      const data = await res.json();
       output.style.display = 'block';
-      output.innerHTML = data.synthesis.replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>').replace(/## (.*?)(\n|$)/g, '<h3>$1</h3>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-    } catch(e) {
+      output.innerHTML = data.synthesis
+        .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
+        .replace(/## (.*?)(\n|$)/g, '<h3>$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    } catch (e) {
       output.style.display = 'block';
-      output.textContent = 'Errore nella generazione. Verifica che CLAUDE_API_KEY sia configurata nel .env.';
+      output.textContent = 'Errore nella generazione. Riprova tra un momento.';
     }
+
     btn.disabled = false;
     btn.innerHTML = 'Genera sintesi';
   });
 
+  // --- Init & polling ---
   loadSurvey();
   loadBrandwatch();
-  loadTrends();
   setInterval(loadSurvey, 30000);
 </script>
 </body>

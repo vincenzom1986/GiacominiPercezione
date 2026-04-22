@@ -1,5 +1,5 @@
 const express = require('express');
-const router = require('express').Router();
+const router = express.Router();
 const axios = require('axios');
 
 const BASE = 'https://api.brandwatch.com';
@@ -8,16 +8,18 @@ let tokenExpiry = 0;
 
 async function getBearerToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
+
   const { BRANDWATCH_USERNAME, BRANDWATCH_PASSWORD } = process.env;
-  const params = new URLSearchParams({
-    grant_type: 'api-password',
-    client_id: 'brandwatch-api-client',
-    username: BRANDWATCH_USERNAME,
-    password: BRANDWATCH_PASSWORD,
-  });
+  const params = new URLSearchParams();
+  params.append('grant_type', 'api-password');
+  params.append('username', BRANDWATCH_USERNAME);
+  params.append('password', BRANDWATCH_PASSWORD);
+  params.append('client_id', 'brandwatch-api-client');
+
   const res = await axios.post(BASE + '/oauth/token', params.toString(), {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
+
   cachedToken = res.data.access_token;
   tokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000;
   return cachedToken;
@@ -25,46 +27,53 @@ async function getBearerToken() {
 
 router.get('/', async (req, res) => {
   const { BRANDWATCH_USERNAME, BRANDWATCH_PASSWORD, BRANDWATCH_PROJECT_ID } = process.env;
+
   if (!BRANDWATCH_USERNAME || !BRANDWATCH_PASSWORD || !BRANDWATCH_PROJECT_ID) {
     return res.json({ mock: true, data: getMockData() });
   }
+
   try {
     const token = await getBearerToken();
     const headers = { Authorization: 'Bearer ' + token };
     const projectId = BRANDWATCH_PROJECT_ID;
 
-    const endDate = new Date().toISOString().slice(0, 19);
-    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19);
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+    // Get queries in the project first
     const queriesRes = await axios.get(BASE + '/projects/' + projectId + '/queries', { headers });
-    const queries = queriesRes.data.results || [];
+    const queries = queriesRes.data.results || queriesRes.data.queries || [];
+    console.log('Brandwatch queries found:', queries.length);
 
-    const giacominiQuery = queries.find(q => q.name.toLowerCase().includes('giacomini')) || queries[0];
-    const queryId = giacominiQuery?.id;
-    console.log('Using query:', giacominiQuery?.name, queryId);
+    const queryIds = queries.map(q => q.id).join(',');
 
-    const mentionsRes = await axios.get(BASE + '/projects/' + projectId + '/data/mentions', {
-      headers,
-      params: { queryId, startDate, endDate, pageSize: 10, page: 0, orderBy: 'date', orderDirection: 'desc' },
-    });
+    const [volumeRes, sentimentRes] = await Promise.all([
+      axios.get(BASE + '/projects/' + projectId + '/data/volume', {
+        headers,
+        params: { startDate, endDate, granularity: 'days', queryId: queryIds || undefined },
+      }),
+      axios.get(BASE + '/projects/' + projectId + '/data/sentiment', {
+        headers,
+        params: { startDate, endDate, queryId: queryIds || undefined },
+      }),
+    ]);
 
-    const mentions = mentionsRes.data.results || [];
-    const totalMentions = mentionsRes.data.totalResults || mentions.length;
+    const volumeData = volumeRes.data;
+    const sentimentData = sentimentRes.data;
+
+    const totalMentions = volumeData.dailyData
+      ? volumeData.dailyData.reduce((sum, d) => sum + (d.numberOfMentions || 0), 0)
+      : (volumeData.totalVolume || 0);
 
     const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-    mentions.forEach(m => {
-      const s = m.sentiment;
-      if (s === 'positive') sentimentCounts.positive++;
-      else if (s === 'neutral') sentimentCounts.neutral++;
-      else if (s === 'negative') sentimentCounts.negative++;
-    });
-    const sentimentTotal = mentions.length || 1;
-
-    const recentPosts = mentions.slice(0, 5).map(m => ({
-      text: m.snippet || m.title || '',
-      source: m.domain || 'Web',
-      sentiment: m.sentiment || 'neutral',
-    }));
+    if (sentimentData.sentiments) {
+      sentimentData.sentiments.forEach(s => {
+        if (s.name === 'positive') sentimentCounts.positive = s.numberOfMentions || 0;
+        else if (s.name === 'neutral') sentimentCounts.neutral = s.numberOfMentions || 0;
+        else if (s.name === 'negative') sentimentCounts.negative = s.numberOfMentions || 0;
+      });
+    }
+    const sentimentTotal = sentimentCounts.positive + sentimentCounts.neutral + sentimentCounts.negative || 1;
 
     res.json({
       mock: false,
@@ -77,7 +86,7 @@ router.get('/', async (req, res) => {
         },
         sov: getMockData().sov,
         topSources: getMockData().topSources,
-        recentPosts: recentPosts.length ? recentPosts : getMockData().recentPosts,
+        recentPosts: getMockData().recentPosts,
       },
     });
   } catch (err) {
@@ -92,11 +101,10 @@ function getMockData() {
     totalMentions: 1240,
     sentiment: { positive: 42, neutral: 38, negative: 20 },
     sov: [
-      { brand: 'Giacomini', share: 22 },
-      { brand: 'Caleffi', share: 35 },
-      { brand: 'Ivar', share: 18 },
-      { brand: 'FAR Rubinetterie', share: 15 },
-      { brand: 'RBM', share: 10 },
+      { brand: 'Giacomini', share: 18 },
+      { brand: 'Caleffi', share: 31 },
+      { brand: 'Watts', share: 24 },
+      { brand: 'Honeywell', share: 27 },
     ],
     topSources: [
       { source: 'Forum idraulici', mentions: 312 },
