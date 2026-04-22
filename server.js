@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
+app.get('/health', (req, res) => res.json({ status: 'ok', ts: Date.now(), commit: 'c2cfae8' }));
 
 app.use('/api/survey', surveyRouter);
 app.use('/api/brandwatch', brandwatchRouter);
