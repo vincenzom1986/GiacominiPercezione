@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
 const axios = require('axios');
 
 const BASE = 'https://api.brandwatch.com';
@@ -9,7 +9,7 @@ let tokenExpiry = 0;
 async function getBearerToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
   const { BRANDWATCH_USERNAME, BRANDWATCH_PASSWORD } = process.env;
-const params = new URLSearchParams({
+  const params = new URLSearchParams({
     grant_type: 'api-password',
     client_id: 'brandwatch-api-client',
     username: BRANDWATCH_USERNAME,
@@ -38,31 +38,27 @@ router.get('/', async (req, res) => {
 
     const queriesRes = await axios.get(BASE + '/projects/' + projectId + '/queries', { headers });
     const queries = queriesRes.data.results || [];
-    const firstQueryId = queries[0]?.id;
-    console.log('Using query:', queries[0]?.name, firstQueryId);
 
-    const [mentionsRes, sentimentRes] = await Promise.all([
-      axios.get(BASE + '/projects/' + projectId + '/data/mentions', {
-        headers,
-        params: { queryId: firstQueryId, startDate, endDate, pageSize: 5, page: 0, orderBy: 'date', orderDirection: 'desc' },
-      }),
-      axios.get(BASE + '/projects/' + projectId + '/data/volume/queries/compare', {
-        headers,
-        params: { queryId: firstQueryId, startDate, endDate, groupBy: 'sentiment' },
-      }),
-    ]);
+    const giacominiQuery = queries.find(q => q.name.toLowerCase().includes('giacomini')) || queries[0];
+    const queryId = giacominiQuery?.id;
+    console.log('Using query:', giacominiQuery?.name, queryId);
+
+    const mentionsRes = await axios.get(BASE + '/projects/' + projectId + '/data/mentions', {
+      headers,
+      params: { queryId, startDate, endDate, pageSize: 10, page: 0, orderBy: 'date', orderDirection: 'desc' },
+    });
 
     const mentions = mentionsRes.data.results || [];
     const totalMentions = mentionsRes.data.totalResults || mentions.length;
 
     const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-    const sentimentResults = sentimentRes.data.results || [];
-    sentimentResults.forEach(r => {
-      if (r.name === 'positive') sentimentCounts.positive = r.volume || 0;
-      else if (r.name === 'neutral') sentimentCounts.neutral = r.volume || 0;
-      else if (r.name === 'negative') sentimentCounts.negative = r.volume || 0;
+    mentions.forEach(m => {
+      const s = m.sentiment;
+      if (s === 'positive') sentimentCounts.positive++;
+      else if (s === 'neutral') sentimentCounts.neutral++;
+      else if (s === 'negative') sentimentCounts.negative++;
     });
-    const sentimentTotal = sentimentCounts.positive + sentimentCounts.neutral + sentimentCounts.negative || 1;
+    const sentimentTotal = mentions.length || 1;
 
     const recentPosts = mentions.slice(0, 5).map(m => ({
       text: m.snippet || m.title || '',
@@ -117,4 +113,3 @@ function getMockData() {
 }
 
 module.exports = router;
-
