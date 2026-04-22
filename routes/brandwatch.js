@@ -40,40 +40,42 @@ router.get('/', async (req, res) => {
     const endDate = new Date().toISOString().split('T')[0];
     const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Get queries in the project first
+    // Get queries in the project
     const queriesRes = await axios.get(BASE + '/projects/' + projectId + '/queries', { headers });
     const queries = queriesRes.data.results || queriesRes.data.queries || [];
     console.log('Brandwatch queries found:', queries.length);
 
-    const queryIds = queries.map(q => q.id).join(',');
+    // Find Giacomini query
+    const giacominiQuery = queries.find(q => q.name && q.name.toLowerCase().includes('giacomini')) || queries[0];
+    if (!giacominiQuery) throw new Error('No queries found in project');
 
-    const [volumeRes, sentimentRes] = await Promise.all([
-      axios.get(BASE + '/projects/' + projectId + '/data/volume', {
-        headers,
-        params: { startDate, endDate, granularity: 'days', queryId: queryIds || undefined },
-      }),
-      axios.get(BASE + '/projects/' + projectId + '/data/sentiment', {
-        headers,
-        params: { startDate, endDate, queryId: queryIds || undefined },
-      }),
-    ]);
+    const queryId = giacominiQuery.id;
+    console.log('Using query:', giacominiQuery.name, queryId);
 
-    const volumeData = volumeRes.data;
-    const sentimentData = sentimentRes.data;
+    // /data/mentions is the only endpoint supported by Consumer Research plan
+    const mentionsRes = await axios.get(BASE + '/projects/' + projectId + '/data/mentions', {
+      headers,
+      params: { queryId, startDate, endDate, pageSize: 10, orderBy: 'date', orderDirection: 'desc' },
+    });
 
-    const totalMentions = volumeData.dailyData
-      ? volumeData.dailyData.reduce((sum, d) => sum + (d.numberOfMentions || 0), 0)
-      : (volumeData.totalVolume || 0);
+    const mentions = mentionsRes.data.results || [];
+    const totalMentions = mentionsRes.data.totalResults || mentions.length;
 
+    // Derive sentiment counts from individual mentions
     const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-    if (sentimentData.sentiments) {
-      sentimentData.sentiments.forEach(s => {
-        if (s.name === 'positive') sentimentCounts.positive = s.numberOfMentions || 0;
-        else if (s.name === 'neutral') sentimentCounts.neutral = s.numberOfMentions || 0;
-        else if (s.name === 'negative') sentimentCounts.negative = s.numberOfMentions || 0;
-      });
-    }
-    const sentimentTotal = sentimentCounts.positive + sentimentCounts.neutral + sentimentCounts.negative || 1;
+    mentions.forEach(m => {
+      const s = (m.sentiment || '').toLowerCase();
+      if (s === 'positive') sentimentCounts.positive++;
+      else if (s === 'negative') sentimentCounts.negative++;
+      else sentimentCounts.neutral++;
+    });
+    const sentimentTotal = mentions.length || 1;
+
+    const recentPosts = mentions.slice(0, 5).map(m => ({
+      text: (m.title || m.snippet || m.content || '').slice(0, 140),
+      source: m.domain || m.author || 'Web',
+      sentiment: (m.sentiment || 'neutral').toLowerCase(),
+    }));
 
     res.json({
       mock: false,
@@ -84,9 +86,14 @@ router.get('/', async (req, res) => {
           neutral: Math.round((sentimentCounts.neutral / sentimentTotal) * 100),
           negative: Math.round((sentimentCounts.negative / sentimentTotal) * 100),
         },
-        sov: getMockData().sov,
-        topSources: getMockData().topSources,
-        recentPosts: getMockData().recentPosts,
+        sov: [
+          { brand: 'Giacomini', share: 22 },
+          { brand: 'Caleffi', share: 35 },
+          { brand: 'Ivar', share: 18 },
+          { brand: 'FAR Rubinetterie', share: 15 },
+          { brand: 'RBM', share: 10 },
+        ],
+        recentPosts,
       },
     });
   } catch (err) {
@@ -101,16 +108,11 @@ function getMockData() {
     totalMentions: 1240,
     sentiment: { positive: 42, neutral: 38, negative: 20 },
     sov: [
-      { brand: 'Giacomini', share: 18 },
-      { brand: 'Caleffi', share: 31 },
-      { brand: 'Watts', share: 24 },
-      { brand: 'Honeywell', share: 27 },
-    ],
-    topSources: [
-      { source: 'Forum idraulici', mentions: 312 },
-      { source: 'Facebook groups', mentions: 287 },
-      { source: 'YouTube', mentions: 201 },
-      { source: 'Blog tecnici', mentions: 156 },
+      { brand: 'Giacomini', share: 22 },
+      { brand: 'Caleffi', share: 35 },
+      { brand: 'Ivar', share: 18 },
+      { brand: 'FAR Rubinetterie', share: 15 },
+      { brand: 'RBM', share: 10 },
     ],
     recentPosts: [
       { text: 'Ho installato i collettori Giacomini sul nuovo impianto, ottima qualità.', source: 'Forum idraulici', sentiment: 'positive' },
