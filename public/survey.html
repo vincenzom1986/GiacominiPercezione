@@ -4,55 +4,59 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Giacomini – La tua opinione</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f0f2f5;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f5f5;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: stretch;
     }
 
     header {
-      background: #003087;
-      color: #fff;
-      padding: 14px 20px;
+      background: #C8102E;
+      padding: 0 24px;
+      height: 60px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(200,16,46,0.3);
+      flex-shrink: 0;
     }
 
-    header .logo { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-    header .subtitle { font-size: 13px; opacity: 0.8; }
+    .header-brand { display: flex; align-items: center; gap: 14px; }
+    .header-logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 2px; text-transform: uppercase; }
+    .header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.35); }
+    .header-subtitle { font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 500; }
+    .header-badge { font-size: 11px; color: rgba(255,255,255,0.75); border: 1px solid rgba(255,255,255,0.3); padding: 3px 10px; border-radius: 20px; }
 
     #chat-container {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 16px;
+      padding: 28px 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      max-width: 680px;
+      gap: 14px;
+      max-width: 640px;
       width: 100%;
       margin: 0 auto;
     }
 
     .bubble {
-      max-width: 85%;
-      padding: 12px 16px;
+      max-width: 82%;
+      padding: 13px 18px;
       border-radius: 18px;
       font-size: 15px;
-      line-height: 1.5;
-      animation: fadeIn 0.2s ease;
+      line-height: 1.55;
+      animation: fadeUp 0.22s ease;
       white-space: pre-wrap;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
@@ -61,98 +65,101 @@
       color: #1a1a1a;
       border-bottom-left-radius: 4px;
       align-self: flex-start;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      border: 1px solid #ebebeb;
     }
 
     .bubble.user {
-      background: #003087;
+      background: #C8102E;
       color: #fff;
       border-bottom-right-radius: 4px;
       align-self: flex-end;
+      box-shadow: 0 2px 8px rgba(200,16,46,0.3);
     }
 
     .bubble.typing {
       background: #fff;
       align-self: flex-start;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border: 1px solid #ebebeb;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
     }
 
-    .typing-dots { display: flex; gap: 4px; padding: 2px 0; }
+    .typing-dots { display: flex; gap: 5px; padding: 3px 2px; }
     .typing-dots span {
-      width: 8px; height: 8px;
-      background: #bbb;
+      width: 7px; height: 7px;
+      background: #C8102E;
       border-radius: 50%;
+      opacity: 0.6;
       animation: bounce 1.2s infinite;
     }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
     .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
     @keyframes bounce {
-      0%, 80%, 100% { transform: scale(1); }
-      40%            { transform: scale(1.4); }
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.6; }
+      40%            { transform: translateY(-5px); opacity: 1; }
     }
 
     .options-container {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 7px;
       align-self: flex-start;
-      max-width: 85%;
-      animation: fadeIn 0.2s ease;
+      max-width: 82%;
+      animation: fadeUp 0.22s ease;
     }
 
     .option-btn {
       background: #fff;
-      border: 1.5px solid #003087;
-      color: #003087;
-      border-radius: 12px;
+      border: 1.5px solid #C8102E;
+      color: #C8102E;
+      border-radius: 10px;
       padding: 10px 16px;
       font-size: 14px;
+      font-weight: 500;
       font-family: inherit;
       cursor: pointer;
       text-align: left;
-      transition: background 0.15s, color 0.15s;
+      transition: all 0.15s;
+      line-height: 1.4;
     }
 
-    .option-btn:hover {
-      background: #003087;
-      color: #fff;
-    }
-
-    .option-btn.selected {
-      background: #003087;
-      color: #fff;
-      pointer-events: none;
-    }
+    .option-btn:hover { background: #C8102E; color: #fff; box-shadow: 0 2px 8px rgba(200,16,46,0.25); }
+    .option-btn.selected { background: #C8102E; color: #fff; pointer-events: none; box-shadow: 0 2px 8px rgba(200,16,46,0.25); }
 
     #input-area {
       background: #fff;
-      border-top: 1px solid #e5e5e5;
-      padding: 12px 16px;
+      border-top: 1px solid #e8e8e8;
+      padding: 14px 16px;
       display: flex;
       gap: 10px;
       align-items: flex-end;
+      max-width: 640px;
       width: 100%;
+      margin: 0 auto;
     }
 
     #user-input {
       flex: 1;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 22px;
-      padding: 10px 16px;
-      font-size: 15px;
+      border: 1.5px solid #ddd;
+      border-radius: 24px;
+      padding: 10px 18px;
+      font-size: 14px;
       resize: none;
       max-height: 120px;
-      line-height: 1.4;
+      line-height: 1.45;
       outline: none;
       transition: border-color 0.15s;
       font-family: inherit;
+      background: #fafafa;
+      color: #1a1a1a;
     }
 
-    #user-input:focus { border-color: #003087; }
+    #user-input:focus { border-color: #C8102E; background: #fff; }
+    #user-input::placeholder { color: #aaa; }
 
     #send-btn {
-      background: #003087;
+      background: #C8102E;
       color: #fff;
       border: none;
       border-radius: 50%;
@@ -163,39 +170,50 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: background 0.15s;
+      transition: background 0.15s, box-shadow 0.15s;
+      box-shadow: 0 2px 8px rgba(200,16,46,0.25);
     }
 
-    #send-btn:hover { background: #0044c8; }
-    #send-btn:disabled { background: #b0b8cc; cursor: not-allowed; }
-    #send-btn svg { width: 20px; height: 20px; }
+    #send-btn:hover { background: #a00d24; }
+    #send-btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+    #send-btn svg { width: 18px; height: 18px; }
 
     .complete-banner {
-      background: #e8f5e9;
-      border: 1.5px solid #4caf50;
-      border-radius: 12px;
-      padding: 16px 20px;
+      background: #fff;
+      border: 1.5px solid #C8102E;
+      border-radius: 14px;
+      padding: 20px 24px;
       text-align: center;
-      color: #2e7d32;
+      color: #C8102E;
       font-weight: 600;
+      font-size: 15px;
       align-self: center;
-      max-width: 85%;
+      max-width: 82%;
+      box-shadow: 0 4px 16px rgba(200,16,46,0.12);
     }
+
+    .complete-banner .check { font-size: 32px; display: block; margin-bottom: 10px; }
+    .complete-banner .sub { font-weight: 400; font-size: 13px; color: #777; display: block; margin-top: 6px; }
+
+    #chat-container::-webkit-scrollbar { width: 4px; }
+    #chat-container::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
   </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <div class="logo">Giacomini</div>
-    <div class="subtitle">Ricerca su percezione del brand</div>
+  <div class="header-brand">
+    <span class="header-logo">Giacomini</span>
+    <span class="header-divider"></span>
+    <span class="header-subtitle">Ricerca percezione brand</span>
   </div>
+  <span class="header-badge">Riservata ai professionisti</span>
 </header>
 
 <div id="chat-container"></div>
 
 <div id="input-area">
-  <textarea id="user-input" placeholder="Scrivi qui..." rows="1"></textarea>
+  <textarea id="user-input" placeholder="Scrivi qui la tua risposta…" rows="1"></textarea>
   <button id="send-btn" disabled>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -212,9 +230,7 @@
   const sessionId = 'sess_' + Math.random().toString(36).slice(2) + Date.now();
   let isComplete = false;
 
-  function scrollBottom() {
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
+  function scrollBottom() { chatContainer.scrollTop = chatContainer.scrollHeight; }
 
   function parseOptions(text) {
     const lines = text.split('\n');
@@ -315,7 +331,7 @@
         isComplete = true;
         const banner = document.createElement('div');
         banner.className = 'complete-banner';
-        banner.textContent = '✓ Grazie! La tua risposta è stata registrata.';
+        banner.innerHTML = '<span class="check">✓</span>Grazie per il tuo contributo!<span class="sub">Le tue risposte ci aiuteranno a migliorare.</span>';
         chatContainer.appendChild(banner);
         userInput.disabled = true;
         sendBtn.disabled = true;
