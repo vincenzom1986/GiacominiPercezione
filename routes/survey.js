@@ -286,7 +286,7 @@ router.post('/message', async (req, res) => {
     res.json({ reply: displayText, complete: isComplete });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Errore nella conversazione' });
+    res.status(500).json({ reply: 'Si è verificato un errore tecnico. Riprova tra un momento.', complete: false });
   }
 });
 

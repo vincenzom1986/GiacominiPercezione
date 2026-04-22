@@ -272,7 +272,7 @@
 
   // Detects numbered options AND whether multi-select is allowed
   function parseOptions(text) {
-    const lines = text.split('\n');
+    const lines = (text || '').split('\n');
     const options = [];
     const questionLines = [];
     let foundOptions = false;
@@ -387,7 +387,7 @@
 
     const div = document.createElement('div');
     div.className = 'bubble ' + role;
-    div.textContent = text;
+    div.textContent = text || '';
     chatContainer.appendChild(div);
     scrollBottom();
   }
