@@ -287,8 +287,13 @@ router.post('/message', async (req, res) => {
 
     res.json({ reply: displayText, complete: isComplete });
   } catch (err) {
-    console.error('[survey] Groq error:', err.status, err.message);
-    res.status(500).json({ reply: 'Si è verificato un errore tecnico. Riprova tra un momento.', complete: false });
+    const errStatus = err.status || 'no-status';
+    const errMsg = err.message || String(err);
+    console.error('[survey] Groq error:', errStatus, errMsg);
+    res.status(500).json({
+      reply: `[DEBUG] Groq ${errStatus}: ${errMsg.substring(0, 300)}`,
+      complete: false,
+    });
   }
 });
 
