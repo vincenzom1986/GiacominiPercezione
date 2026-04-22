@@ -246,7 +246,9 @@ router.post('/message', async (req, res) => {
 
   const session = sessions.get(sessionId);
   session.lastActivity = Date.now();
-  if (message) session.messages.push({ role: 'user', content: message });
+  // Always push a user turn so the conversation never starts with an assistant message
+  // (Groq rejects conversations where the first turn is 'assistant')
+  session.messages.push({ role: 'user', content: message || 'Inizia' });
 
   try {
     const response = await client.chat.completions.create({

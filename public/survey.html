@@ -249,7 +249,7 @@
 
 <div id="chat-container"></div>
 
-<div id="input-area">
+<div id="input-area" style="display:none">
   <textarea id="user-input" placeholder="Scrivi qui la tua risposta…" rows="1"></textarea>
   <button id="send-btn" disabled>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -305,9 +305,11 @@
   }
 
   function setInputEnabled(enabled) {
+    const inputArea = document.getElementById('input-area');
+    inputArea.style.display = enabled ? 'flex' : 'none';
     userInput.disabled = !enabled;
     sendBtn.disabled = !enabled || userInput.value.trim() === '';
-    if (enabled) userInput.focus();
+    if (enabled) { userInput.value = ''; userInput.focus(); }
   }
 
   function addBubble(text, role) {
