@@ -417,4 +417,37 @@ router.get('/results', (req, res) => {
   });
 });
 
+// CSV export — scarica tutti i dati come file Excel-compatibile
+router.get('/export', (req, res) => {
+  const rows = db.prepare('SELECT * FROM responses WHERE completed = 1 ORDER BY created_at ASC').all();
+
+  const cols = [
+    'id', 'session_id', 'created_at',
+    'tipo_installazioni', 'prima_associazione', 'uso_prodotti', 'prodotti_usati',
+    'valutazione_qualita', 'valutazione_facilita', 'valutazione_prezzo',
+    'valutazione_disponibilita', 'valutazione_assistenza', 'valutazione_formazione',
+    'nps', 'competitor_usati', 'barriera_non_utilizzo', 'leva_attivazione',
+    'driver_scelta', 'canali_informazione', 'contenuto_preferito',
+    'anni_attivita', 'regione',
+  ];
+
+  const escape = v => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? '"' + s.replace(/"/g, '""') + '"'
+      : s;
+  };
+
+  const lines = [
+    cols.join(','),
+    ...rows.map(r => cols.map(c => escape(r[c])).join(',')),
+  ];
+
+  const filename = `giacomini_survey_${new Date().toISOString().slice(0,10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('﻿' + lines.join('\r\n')); // BOM per Excel italiano
+});
+
 module.exports = router;
