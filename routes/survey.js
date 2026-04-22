@@ -46,7 +46,8 @@ const newCols = [
   ['valutazione_formazione', 'INTEGER'], ['nps', 'INTEGER'],
   ['competitor_usati', 'TEXT'], ['barriera_non_utilizzo', 'TEXT'],
   ['leva_attivazione', 'TEXT'], ['driver_scelta', 'TEXT'],
-  ['contenuto_preferito', 'TEXT'], ['anni_attivita', 'TEXT'], ['regione', 'TEXT'],
+  ['canali_informazione', 'TEXT'], ['contenuto_preferito', 'TEXT'],
+  ['anni_attivita', 'TEXT'], ['regione', 'TEXT'],
 ];
 for (const [col, type] of newCols) {
   if (!existingCols.includes(col)) db.exec(`ALTER TABLE responses ADD COLUMN ${col} ${type}`);
@@ -61,6 +62,7 @@ const SYSTEM_PROMPT = `Sei un intervistatore professionale che raccoglie feedbac
 
 LINGUA: rispondi SEMPRE in italiano.
 STILE: cordiale e professionale. Non commentare le risposte, passa direttamente alla domanda successiva.
+SCALE: quando ricevi risposte del tipo "4 – Buono" o "3 – Sufficiente", usa solo il numero iniziale come valore numerico.
 
 FLUSSO SURVEY — segui ESATTAMENTE questo ordine:
 
@@ -83,7 +85,7 @@ Q2 [TUTTI | SCELTA SINGOLA]
 6. Non la conosco bene"
 
 Q3 [TUTTI | SCELTA SINGOLA]
-"Hai usato prodotti Giacomini negli ultimi 24 mesi?
+"Hai usato prodotti Giacomini negli ultimi 12 mesi?
 1. Sì
 2. No"
 
@@ -98,43 +100,60 @@ Q3 FOLLOW-UP solo se risponde Sì:
 
 ═══ SE Q3 = Sì → PERCORSO UTILIZZATORI ═══
 
-Q4A [SCALA 1-5 su 6 dimensioni]
-"Valuta Giacomini da 1 (pessimo) a 5 (ottimo) su questi aspetti. Rispondi con 6 numeri separati da virgola nell'ordine indicato:
-1. Qualità materiali
-2. Facilità installazione
-3. Rapporto qualità/prezzo
-4. Disponibilità in magazzino
-5. Assistenza tecnica
-6. Formazione/supporto commerciale
-Esempio: 4,3,5,2,4,3"
+Q4A [SCALA 1-5 su 6 dimensioni — chiedi UNA DIMENSIONE ALLA VOLTA]
+Fai le 6 sotto-domande nell'ordine esatto, aspettando la risposta prima di procedere.
+Ogni sotto-domanda deve avere esattamente questo formato (5 opzioni su righe separate):
+
+[testo domanda]
+1. 1 – Pessimo
+2. 2 – Scarso
+3. 3 – Sufficiente
+4. 4 – Buono
+5. 5 – Ottimo
+
+Le 6 sotto-domande:
+1. "Valutiamo Giacomini su 6 aspetti, uno alla volta. Come giudichi la qualità dei materiali?"
+2. "La facilità di installazione?"
+3. "Il rapporto qualità/prezzo?"
+4. "La disponibilità in magazzino dal tuo grossista?"
+5. "L'assistenza tecnica?"
+6. "Il supporto formativo e commerciale?"
+
+Dopo la sesta risposta memorizza i 6 valori numerici e procedi con Q5A.
+Nel blocco DATA riportali come "v1,v2,v3,v4,v5,v6" (es: "4,3,5,2,4,3").
 
 Q5A [NPS 0-10]
-"Da 0 a 10, quanto consiglieresti Giacomini a un collega? (solo il numero)"
+"Da 0 a 10, con quale probabilità consiglieresti Giacomini a un collega? (solo il numero)"
 
 Q6A [MULTIPLA MAX 3]
-"Quali altri brand hai comprato negli ultimi 12 mesi? Scegli max 3.
+"Quali altri brand hai acquistato negli ultimi 12 mesi? Scegli max 3.
 1. Caleffi
 2. Herz
 3. Oventrop
 4. Danfoss
 5. Ivar
 6. Honeywell Resideo
-7. RBM
-8. Altro"
+7. FAR Rubinetterie
+8. WATTS
+9. RBM
+10. Altro"
 
 ═══ SE Q3 = No → PERCORSO NON UTILIZZATORI ═══
 
-Q4B [SCELTA SINGOLA]
-"Perché non hai ancora provato Giacomini?
-1. Non la trovo dal mio grossista
+ROUTING: Se il rispondente ha risposto "Non la conosco bene" a Q2, SALTA Q4B e vai
+direttamente a Q5B — chi non conosce il brand non può motivare la mancata scelta.
+
+Q4B [SCELTA SINGOLA — salta se Q2 = "Non la conosco bene"]
+"Perché non hai usato prodotti Giacomini?
+1. Non li trovo dal mio grossista
 2. Prezzo percepito alto
 3. Sono abituato ad altro brand
-4. Non conosco i prodotti
+4. Non conosco bene i prodotti
 5. Nessun contatto commerciale
 6. Esperienza negativa passata"
 
 Q5B [SCELTA SINGOLA]
-"Cosa ti farebbe provare Giacomini per la prima volta?
+"Cosa ti farebbe provare Giacomini?
 1. Kit prova gratuito
 2. Video tutorial 2 min su YouTube
 3. Corso online con attestato
@@ -148,15 +167,15 @@ Q7 [MULTIPLA MAX 3]
 1. Prezzo
 2. Affidabilità nel tempo
 3. Disponibilità immediata
-4. Facilità installazione
-5. Assistenza post-vendita
-6. Rapporto con il rappresentante
-7. Formazione"
+4. Formazione e supporto tecnico
+5. Facilità installazione
+6. Assistenza post-vendita
+7. Rapporto con il rappresentante"
 
 Q8 [SCELTA SINGOLA]
 "Dove ti informi principalmente su nuovi prodotti?
 1. Rappresentanti commerciali
-2. Fiere (MCE, Klimahouse…)
+2. Fiere di settore (MCE, ISH…)
 3. Riviste specializzate
 4. YouTube / social media
 5. Colleghi e passaparola
@@ -165,16 +184,17 @@ Q8 [SCELTA SINGOLA]
 Q9 [SCELTA SINGOLA]
 "Se Giacomini realizzasse un contenuto utile, quale preferiresti?
 1. Video montaggio collettore
-2. Confronto diretto con Caleffi
+2. Confronto tecnico tra soluzioni
 3. Guida dimensionamento radiante
 4. Casi reali di cantiere
 5. Novità normative"
 
 Q10a [SCELTA SINGOLA]
 "Due ultime domande. Quanti anni di attività hai?
-1. Meno di 5 anni
-2. Da 5 a 15 anni
-3. Oltre 15 anni"
+1. Meno di 3 anni
+2. Da 3 a 10 anni
+3. Da 10 a 20 anni
+4. Oltre 20 anni"
 
 Q10b [SCELTA SINGOLA]
 "In quale area geografica lavori principalmente?
@@ -191,16 +211,25 @@ Dopo Q10b ringrazia calorosamente, poi emetti ESATTAMENTE questo blocco finale (
 
 const sessions = new Map();
 
+// Remove sessions inactive for more than 2 hours to prevent memory growth
+setInterval(() => {
+  const cutoff = Date.now() - 2 * 60 * 60 * 1000;
+  for (const [id, s] of sessions) {
+    if (s.lastActivity < cutoff) sessions.delete(id);
+  }
+}, 30 * 60 * 1000);
+
 router.post('/message', async (req, res) => {
   const { sessionId, message } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
 
   if (!sessions.has(sessionId)) {
-    sessions.set(sessionId, { messages: [] });
+    sessions.set(sessionId, { messages: [], lastActivity: Date.now() });
     db.prepare('INSERT OR IGNORE INTO responses (session_id) VALUES (?)').run(sessionId);
   }
 
   const session = sessions.get(sessionId);
+  session.lastActivity = Date.now();
   if (message) session.messages.push({ role: 'user', content: message });
 
   try {
@@ -246,7 +275,7 @@ router.post('/message', async (req, res) => {
 });
 
 function saveResponses(sessionId, messages, d) {
-  const vals = (d.valutazione || '').split(',').map(v => parseInt(v.trim()) || null);
+  const vals = (d.valutazione || '').split(/[\s,;/\-]+/).map(v => parseInt(v.trim()) || null);
   db.prepare(`
     UPDATE responses SET
       tipo_installazioni = ?, prima_associazione = ?,
