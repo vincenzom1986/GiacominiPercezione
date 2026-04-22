@@ -351,11 +351,40 @@ router.get('/results', (req, res) => {
     GROUP BY anni_attivita ORDER BY count DESC
   `).all();
 
+  // Multi-select fields: split comma-separated values and count individually
+  function parseMulti(field) {
+    const rows = db.prepare(`SELECT ${field} FROM responses WHERE completed = 1 AND ${field} IS NOT NULL`).all();
+    const counts = {};
+    rows.forEach(r => {
+      (r[field] || '').split(/[,;]+/).forEach(item => {
+        const key = item.trim();
+        if (key) counts[key] = (counts[key] || 0) + 1;
+      });
+    });
+    return Object.entries(counts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+  }
+
+  const byCompetitor = parseMulti('competitor_usati');
+  const byDriver = parseMulti('driver_scelta');
+
+  const byCanale = db.prepare(`
+    SELECT canali_informazione as label, COUNT(*) as count
+    FROM responses WHERE completed = 1 AND canali_informazione IS NOT NULL
+    GROUP BY canali_informazione ORDER BY count DESC
+  `).all();
+
+  const byContenuto = db.prepare(`
+    SELECT contenuto_preferito as label, COUNT(*) as count
+    FROM responses WHERE completed = 1 AND contenuto_preferito IS NOT NULL
+    GROUP BY contenuto_preferito ORDER BY count DESC
+  `).all();
+
   const allCompleted = db.prepare('SELECT * FROM responses WHERE completed = 1').all();
 
   res.json({
     total, completed, recent, byType, byAssociation, byRating,
-    avgNps, avgValutazioni, byBarriera, byLeva, byRegione, byAnni, allCompleted,
+    avgNps, avgValutazioni, byBarriera, byLeva, byRegione, byAnni,
+    byCompetitor, byDriver, byCanale, byContenuto, allCompleted,
   });
 });
 

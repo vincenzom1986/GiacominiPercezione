@@ -324,6 +324,34 @@
 
     <hr class="section-divider">
 
+    <!-- Competitor usati + Driver di scelta -->
+    <div class="grid-2">
+      <div>
+        <div class="sub-title">Brand acquistati ultimi 12 mesi — utilizzatori (Q6A)</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chart-competitor"></canvas></div>
+      </div>
+      <div>
+        <div class="sub-title">Cosa conta di più nella scelta del brand (Q7)</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chart-driver"></canvas></div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Canali informazione + Contenuto preferito -->
+    <div class="grid-2">
+      <div>
+        <div class="sub-title">Canali di informazione (Q8)</div>
+        <div class="chart-wrap"><canvas id="chart-canale"></canvas></div>
+      </div>
+      <div>
+        <div class="sub-title">Contenuto preferito (Q9)</div>
+        <div class="chart-wrap"><canvas id="chart-contenuto"></canvas></div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
     <!-- Recent table -->
     <div>
       <div class="sub-title">Risposte recenti</div>
@@ -403,6 +431,10 @@
   let chartValutazioni = null;
   let chartRegione = null;
   let chartAnni = null;
+  let chartCompetitor = null;
+  let chartDriver = null;
+  let chartCanale = null;
+  let chartContenuto = null;
 
   const COLORS_BRAND = ['#003087','#0044c8','#3b82f6','#93c5fd','#bfdbfe','#dbeafe'];
   const COLORS_GEO   = ['#003087','#0f52ba','#4472c4','#7eaadb'];
@@ -496,6 +528,40 @@
       // Barriere e leve
       renderSimpleList('list-barriere', d.byBarriera, 'Nessuna risposta da non utilizzatori');
       renderSimpleList('list-leve', d.byLeva, 'Nessuna risposta da non utilizzatori');
+
+      // Competitor usati (Q6A) — bar orizzontale
+      if (chartCompetitor) chartCompetitor.destroy();
+      chartCompetitor = makeChart('chart-competitor', 'bar',
+        (d.byCompetitor || []).map(x => x.label),
+        [{ label: 'Rispondenti', data: (d.byCompetitor || []).map(x => x.count),
+           backgroundColor: '#94a3b8', borderRadius: 4 }],
+        { indexAxis: 'y', plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      );
+
+      // Driver di scelta (Q7) — bar orizzontale
+      if (chartDriver) chartDriver.destroy();
+      chartDriver = makeChart('chart-driver', 'bar',
+        (d.byDriver || []).map(x => x.label),
+        [{ label: 'Rispondenti', data: (d.byDriver || []).map(x => x.count),
+           backgroundColor: '#003087cc', borderRadius: 4 }],
+        { indexAxis: 'y', plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      );
+
+      // Canali informazione (Q8) — doughnut
+      if (chartCanale) chartCanale.destroy();
+      chartCanale = makeChart('chart-canale', 'doughnut',
+        (d.byCanale || []).map(x => x.label),
+        [{ data: (d.byCanale || []).map(x => x.count), backgroundColor: COLORS_BRAND, borderWidth: 2 }]
+      );
+
+      // Contenuto preferito (Q9) — doughnut
+      if (chartContenuto) chartContenuto.destroy();
+      chartContenuto = makeChart('chart-contenuto', 'doughnut',
+        (d.byContenuto || []).map(x => x.label),
+        [{ data: (d.byContenuto || []).map(x => x.count), backgroundColor: COLORS_GEO, borderWidth: 2 }]
+      );
 
       // Recent table
       const tbody = document.getElementById('survey-tbody');
