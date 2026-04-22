@@ -127,8 +127,19 @@ Le 6 sotto-domande:
 Dopo la sesta risposta memorizza i 6 valori numerici e procedi con Q5A.
 Nel blocco DATA riportali come "v1,v2,v3,v4,v5,v6" (es: "4,3,5,2,4,3").
 
-Q5A [NPS 0-10]
-"Da 0 a 10, con quale probabilità consiglieresti Giacomini a un collega? (solo il numero)"
+Q5A [NPS 0-10 — usa ESATTAMENTE 11 opzioni numerate, nient'altro]
+"Con quale probabilità consiglieresti Giacomini a un collega? (0 = per niente, 10 = assolutamente sì)
+1. 0
+2. 1
+3. 2
+4. 3
+5. 4
+6. 5
+7. 6
+8. 7
+9. 8
+10. 9
+11. 10"
 
 Q6A [MULTIPLA MAX 3]
 "Quali altri brand hai acquistato negli ultimi 12 mesi? Scegli max 3.

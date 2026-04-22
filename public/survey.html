@@ -195,8 +195,45 @@
     .complete-banner .check { font-size: 32px; display: block; margin-bottom: 10px; }
     .complete-banner .sub { font-weight: 400; font-size: 13px; color: #777; display: block; margin-top: 6px; }
 
-    #chat-container::-webkit-scrollbar { width: 4px; }
-    #chat-container::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+    .option-btn.multi-selected {
+      background: var(--red-light);
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .confirm-btn {
+      background: var(--red);
+      color: #fff;
+      border-color: var(--red);
+      margin-top: 6px;
+      font-size: 13px;
+      opacity: 1;
+    }
+
+    .confirm-btn:disabled {
+      background: #e5e5e5;
+      color: #aaa;
+      border-color: #e5e5e5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .confirm-btn:not(:disabled):hover {
+      background: var(--red-dark);
+    }
+
+    .nps-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .nps-grid .option-btn {
+      padding: 10px 4px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -229,9 +266,11 @@
 
   const sessionId = 'sess_' + Math.random().toString(36).slice(2) + Date.now();
   let isComplete = false;
+  let buttonsActive = false; // true while option buttons are waiting for user input
 
   function scrollBottom() { chatContainer.scrollTop = chatContainer.scrollHeight; }
 
+  // Detects numbered options AND whether multi-select is allowed
   function parseOptions(text) {
     const lines = text.split('\n');
     const options = [];
@@ -251,37 +290,96 @@
         if (cleaned) questionLines.push(cleaned);
       }
     }
-    return { questionText: questionLines.join('\n').trim(), options };
+
+    // Detect max selections from question text
+    const maxMatch = text.match(/scegli max\s*(\d+)|max\s*(\d+)/i);
+    const isMultiAny = /più di uno|scegliere più/i.test(text);
+    const maxSelect = maxMatch
+      ? parseInt(maxMatch[1] || maxMatch[2])
+      : (isMultiAny ? 99 : 1);
+
+    // Detect NPS grid (options are only digits 0-10)
+    const isNps = options.length >= 5 && options.every(o => /^\d{1,2}$/.test(o));
+
+    return { questionText: questionLines.join('\n').trim() || text, options, maxSelect, isNps };
+  }
+
+  function setInputEnabled(enabled) {
+    userInput.disabled = !enabled;
+    sendBtn.disabled = !enabled || userInput.value.trim() === '';
+    if (enabled) userInput.focus();
   }
 
   function addBubble(text, role) {
     if (role === 'bot') {
-      const { questionText, options } = parseOptions(text);
+      const { questionText, options, maxSelect, isNps } = parseOptions(text);
 
       if (options.length >= 2) {
         const bubble = document.createElement('div');
         bubble.className = 'bubble bot';
-        bubble.textContent = questionText || text;
+        bubble.textContent = questionText;
         chatContainer.appendChild(bubble);
 
         const container = document.createElement('div');
         container.className = 'options-container';
+        if (isNps) container.classList.add('nps-grid');
 
-        options.forEach((opt, i) => {
-          const btn = document.createElement('button');
-          btn.className = 'option-btn';
-          btn.textContent = (i + 1) + '. ' + opt;
-          btn.addEventListener('click', () => {
-            document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-            btn.classList.add('selected');
-            sendMessage(opt);
+        if (maxSelect > 1) {
+          // ── MULTI-SELECT ──────────────────────────────────────
+          const selected = [];
+
+          const confirmBtn = document.createElement('button');
+          confirmBtn.className = 'option-btn confirm-btn';
+          confirmBtn.disabled = true;
+          confirmBtn.textContent = `Conferma (0 di max ${maxSelect})`;
+
+          options.forEach((opt) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = isNps ? opt : opt;
+            btn.addEventListener('click', () => {
+              if (btn.classList.contains('multi-selected')) {
+                btn.classList.remove('multi-selected');
+                selected.splice(selected.indexOf(opt), 1);
+              } else if (selected.length < maxSelect) {
+                btn.classList.add('multi-selected');
+                selected.push(opt);
+              }
+              const n = selected.length;
+              confirmBtn.disabled = n === 0;
+              confirmBtn.textContent = n === 0
+                ? `Conferma (0 di max ${maxSelect})`
+                : `Conferma ${n} ${n === 1 ? 'risposta' : 'risposte'}`;
+            });
+            container.appendChild(btn);
           });
-          container.appendChild(btn);
-        });
+
+          confirmBtn.addEventListener('click', () => {
+            container.querySelectorAll('button').forEach(b => b.disabled = true);
+            buttonsActive = false;
+            sendMessage(selected.join(', '));
+          });
+          container.appendChild(confirmBtn);
+
+        } else {
+          // ── SINGLE-SELECT ─────────────────────────────────────
+          options.forEach((opt) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = isNps ? opt : opt;
+            btn.addEventListener('click', () => {
+              container.querySelectorAll('button').forEach(b => b.disabled = true);
+              btn.classList.add('selected');
+              buttonsActive = false;
+              sendMessage(opt);
+            });
+            container.appendChild(btn);
+          });
+        }
 
         chatContainer.appendChild(container);
-        userInput.disabled = true;
-        sendBtn.disabled = true;
+        setInputEnabled(false);
+        buttonsActive = true;
         scrollBottom();
         return;
       }
@@ -312,8 +410,8 @@
     if (isComplete) return;
     if (text) addBubble(text, 'user');
 
-    sendBtn.disabled = true;
-    userInput.disabled = true;
+    setInputEnabled(false);
+    buttonsActive = false;
     showTyping();
 
     try {
@@ -333,8 +431,7 @@
         banner.className = 'complete-banner';
         banner.innerHTML = '<span class="check">✓</span>Grazie per il tuo contributo!<span class="sub">Le tue risposte ci aiuteranno a migliorare.</span>';
         chatContainer.appendChild(banner);
-        userInput.disabled = true;
-        sendBtn.disabled = true;
+        setInputEnabled(false);
         scrollBottom();
         return;
       }
@@ -343,9 +440,8 @@
       addBubble('Errore di connessione. Riprova tra un momento.', 'bot');
     }
 
-    userInput.disabled = false;
-    sendBtn.disabled = false;
-    userInput.focus();
+    // Re-enable input only if no buttons are waiting for a click
+    if (!buttonsActive) setInputEnabled(true);
   }
 
   userInput.addEventListener('input', () => {
@@ -361,7 +457,6 @@
       if (text && !isComplete) {
         userInput.value = '';
         userInput.style.height = 'auto';
-        sendBtn.disabled = true;
         sendMessage(text);
       }
     }
@@ -372,7 +467,6 @@
     if (text && !isComplete) {
       userInput.value = '';
       userInput.style.height = 'auto';
-      sendBtn.disabled = true;
       sendMessage(text);
     }
   });
