@@ -96,10 +96,11 @@ function getMockData() {
     totalMentions: 1240,
     sentiment: { positive: 42, neutral: 38, negative: 20 },
     sov: [
-      { brand: 'Giacomini', share: 18 },
-      { brand: 'Caleffi', share: 31 },
-      { brand: 'Watts', share: 24 },
-      { brand: 'Honeywell', share: 27 },
+      { brand: 'Giacomini', share: 22 },
+      { brand: 'Caleffi', share: 35 },
+      { brand: 'Ivar', share: 18 },
+      { brand: 'FAR Rubinetterie', share: 15 },
+      { brand: 'RBM', share: 10 },
     ],
     topSources: [
       { source: 'Forum idraulici', mentions: 312 },
@@ -116,3 +117,4 @@ function getMockData() {
 }
 
 module.exports = router;
+
