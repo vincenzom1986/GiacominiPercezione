@@ -5,8 +5,13 @@ const router = express.Router();
 const OpenAI = require('openai');
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
-const db = new Database(path.join(__dirname, '../db/survey.db'));
+// Ensure db directory exists (Railway has ephemeral filesystem — directory may be absent)
+const DB_DIR = path.join(__dirname, '../db');
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
+
+const db = new Database(path.join(DB_DIR, 'survey.db'));
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS responses (
