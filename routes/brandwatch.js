@@ -8,18 +8,16 @@ let tokenExpiry = 0;
 
 async function getBearerToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
   const { BRANDWATCH_USERNAME, BRANDWATCH_PASSWORD } = process.env;
-  const params = new URLSearchParams();
-  params.append('grant_type', 'api-password');
-  params.append('username', BRANDWATCH_USERNAME);
-  params.append('password', BRANDWATCH_PASSWORD);
-  params.append('client_id', 'brandwatch-api-client');
-
+  const params = new URLSearchParams({
+    grant_type: 'api-password',
+    client_id: BRANDWATCH_USERNAME,
+    username: BRANDWATCH_USERNAME,
+    password: BRANDWATCH_PASSWORD,
+  });
   const res = await axios.post(BASE + '/oauth/token', params.toString(), {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   });
-
   cachedToken = res.data.access_token;
   tokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000;
   return cachedToken;
@@ -27,54 +25,50 @@ async function getBearerToken() {
 
 router.get('/', async (req, res) => {
   const { BRANDWATCH_USERNAME, BRANDWATCH_PASSWORD, BRANDWATCH_PROJECT_ID } = process.env;
-
   if (!BRANDWATCH_USERNAME || !BRANDWATCH_PASSWORD || !BRANDWATCH_PROJECT_ID) {
     return res.json({ mock: true, data: getMockData() });
   }
-
   try {
     const token = await getBearerToken();
     const headers = { Authorization: 'Bearer ' + token };
     const projectId = BRANDWATCH_PROJECT_ID;
 
-    const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const endDate = new Date().toISOString().slice(0, 19);
+    const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19);
 
     const queriesRes = await axios.get(BASE + '/projects/' + projectId + '/queries', { headers });
-    const queries = queriesRes.data.results || queriesRes.data.queries || [];
-    console.log('Brandwatch queries found:', queries.length);
-
+    const queries = queriesRes.data.results || [];
     const firstQueryId = queries[0]?.id;
-console.log('Using queryId:', firstQueryId);
+    console.log('Using query:', queries[0]?.name, firstQueryId);
 
-const [volumeRes, sentimentRes] = await Promise.all([
-  axios.get(BASE + '/projects/' + projectId + '/data/volume', {
-    headers,
-    params: { startDate, endDate, granularity: 'days', queryId: firstQueryId },
-  }),
-  axios.get(BASE + '/projects/' + projectId + '/data/sentiment', {
-    headers,
-    params: { startDate, endDate, queryId: firstQueryId },
-  }),
-]);
+    const [mentionsRes, sentimentRes] = await Promise.all([
+      axios.get(BASE + '/projects/' + projectId + '/data/mentions', {
+        headers,
+        params: { queryId: firstQueryId, startDate, endDate, pageSize: 5, page: 0, orderBy: 'date', orderDirection: 'desc' },
+      }),
+      axios.get(BASE + '/projects/' + projectId + '/data/volume/queries/compare', {
+        headers,
+        params: { queryId: firstQueryId, startDate, endDate, groupBy: 'sentiment' },
+      }),
+    ]);
 
-
-    const volumeData = volumeRes.data;
-    const sentimentData = sentimentRes.data;
-
-    const totalMentions = volumeData.dailyData
-      ? volumeData.dailyData.reduce((sum, d) => sum + (d.numberOfMentions || 0), 0)
-      : (volumeData.totalVolume || 0);
+    const mentions = mentionsRes.data.results || [];
+    const totalMentions = mentionsRes.data.totalResults || mentions.length;
 
     const sentimentCounts = { positive: 0, neutral: 0, negative: 0 };
-    if (sentimentData.sentiments) {
-      sentimentData.sentiments.forEach(s => {
-        if (s.name === 'positive') sentimentCounts.positive = s.numberOfMentions || 0;
-        else if (s.name === 'neutral') sentimentCounts.neutral = s.numberOfMentions || 0;
-        else if (s.name === 'negative') sentimentCounts.negative = s.numberOfMentions || 0;
-      });
-    }
+    const sentimentResults = sentimentRes.data.results || [];
+    sentimentResults.forEach(r => {
+      if (r.name === 'positive') sentimentCounts.positive = r.volume || 0;
+      else if (r.name === 'neutral') sentimentCounts.neutral = r.volume || 0;
+      else if (r.name === 'negative') sentimentCounts.negative = r.volume || 0;
+    });
     const sentimentTotal = sentimentCounts.positive + sentimentCounts.neutral + sentimentCounts.negative || 1;
+
+    const recentPosts = mentions.slice(0, 5).map(m => ({
+      text: m.snippet || m.title || '',
+      source: m.domain || 'Web',
+      sentiment: m.sentiment || 'neutral',
+    }));
 
     res.json({
       mock: false,
@@ -87,7 +81,7 @@ const [volumeRes, sentimentRes] = await Promise.all([
         },
         sov: getMockData().sov,
         topSources: getMockData().topSources,
-        recentPosts: getMockData().recentPosts,
+        recentPosts: recentPosts.length ? recentPosts : getMockData().recentPosts,
       },
     });
   } catch (err) {
@@ -122,4 +116,3 @@ function getMockData() {
 }
 
 module.exports = router;
-
