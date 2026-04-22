@@ -6,14 +6,16 @@ router.get('/', async (req, res) => {
   try {
     const keywords = ['giacomini', 'caleffi', 'ivar valvole', 'far rubinetterie'];
 
-
     const [interestOverTime, relatedQueries] = await Promise.all([
       googleTrends.interestOverTime({
         keyword: keywords,
         startTime: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
         geo: 'IT',
       }),
-      googleTrends.relatedQueries({ keyword: 'giacomini', geo: 'IT' }),
+      googleTrends.relatedQueries({
+        keyword: 'giacomini',
+        geo: 'IT',
+      }),
     ]);
 
     const timelineData = JSON.parse(interestOverTime);
@@ -35,10 +37,9 @@ router.get('/', async (req, res) => {
 });
 
 function getMockTrends() {
-  const months = ['Apr 25','Mag 25','Giu 25','Lug 25','Ago 25','Set 25','Ott 25','Nov 25','Dic 25','Gen 26','Feb 26','Mar 26'];
+  const months = ['Apr 25', 'Mag 25', 'Giu 25', 'Lug 25', 'Ago 25', 'Set 25', 'Ott 25', 'Nov 25', 'Dic 25', 'Gen 26', 'Feb 26', 'Mar 26'];
   return {
-    const keywords = ['giacomini', 'caleffi', 'ivar valvole', 'far rubinetterie'];
-
+    keywords: ['giacomini', 'caleffi', 'ivar valvole', 'far rubinetterie'],
     timeline: months.map((m, i) => ({
       date: m,
       values: [
@@ -62,3 +63,4 @@ function getMockTrends() {
 }
 
 module.exports = router;
+
