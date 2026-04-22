@@ -251,14 +251,29 @@ router.post('/message', async (req, res) => {
   session.messages.push({ role: 'user', content: message || 'Inizia' });
 
   try {
-    const response = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...session.messages,
-      ],
-    });
+    // Try primary model; fall back to smaller model on 429 (daily token limit exhausted)
+    const MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+    let response;
+    for (const model of MODELS) {
+      try {
+        response = await client.chat.completions.create({
+          model,
+          max_tokens: 1024,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...session.messages,
+          ],
+        });
+        if (model !== MODELS[0]) console.log('[survey] fallback model active:', model);
+        break;
+      } catch (err) {
+        if (err.status === 429 && model !== MODELS[MODELS.length - 1]) {
+          console.warn('[survey] 429 on', model, '— trying fallback');
+          continue;
+        }
+        throw err;
+      }
+    }
 
     const assistantText = response.choices[0].message.content;
     session.messages.push({ role: 'assistant', content: assistantText });
@@ -287,13 +302,8 @@ router.post('/message', async (req, res) => {
 
     res.json({ reply: displayText, complete: isComplete });
   } catch (err) {
-    const errStatus = err.status || 'no-status';
-    const errMsg = err.message || String(err);
-    console.error('[survey] Groq error:', errStatus, errMsg);
-    res.status(500).json({
-      reply: `[DEBUG] Groq ${errStatus}: ${errMsg.substring(0, 300)}`,
-      complete: false,
-    });
+    console.error('[survey] error:', err.status, err.message);
+    res.status(500).json({ reply: 'Si è verificato un errore tecnico. Riprova tra un momento.', complete: false });
   }
 });
 
