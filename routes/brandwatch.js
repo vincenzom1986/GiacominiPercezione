@@ -9,9 +9,9 @@ let tokenExpiry = 0;
 async function getBearerToken() {
   if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
   const { BRANDWATCH_USERNAME, BRANDWATCH_PASSWORD } = process.env;
-  const params = new URLSearchParams({
+const params = new URLSearchParams({
     grant_type: 'api-password',
-    client_id: BRANDWATCH_USERNAME,
+    client_id: 'brandwatch-api-client',
     username: BRANDWATCH_USERNAME,
     password: BRANDWATCH_PASSWORD,
   });
