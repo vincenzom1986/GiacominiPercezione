@@ -4,7 +4,8 @@ const googleTrends = require('google-trends-api');
 
 router.get('/', async (req, res) => {
   try {
-    const keywords = ['giacomini', 'caleffi', 'watts idraulica', 'honeywell riscaldamento'];
+    const keywords = ['giacomini', 'caleffi', 'ivar valvole', 'far rubinetterie'];
+
 
     const [interestOverTime, relatedQueries] = await Promise.all([
       googleTrends.interestOverTime({
@@ -36,7 +37,8 @@ router.get('/', async (req, res) => {
 function getMockTrends() {
   const months = ['Apr 25','Mag 25','Giu 25','Lug 25','Ago 25','Set 25','Ott 25','Nov 25','Dic 25','Gen 26','Feb 26','Mar 26'];
   return {
-    keywords: ['giacomini', 'caleffi', 'watts idraulica', 'honeywell riscaldamento'],
+    const keywords = ['giacomini', 'caleffi', 'ivar valvole', 'far rubinetterie'];
+
     timeline: months.map((m, i) => ({
       date: m,
       values: [
