@@ -423,9 +423,18 @@
         body: JSON.stringify({ sessionId, message: text || '' }),
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+      console.log('[survey] HTTP', res.status, rawText.substring(0, 300));
+
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseErr) {
+        throw new Error('Risposta non JSON (HTTP ' + res.status + '): ' + rawText.substring(0, 120));
+      }
+
       removeTyping();
-      addBubble(data.reply, 'bot');
+      addBubble(data.reply || data.error || '(risposta vuota)', 'bot');
 
       if (data.complete) {
         isComplete = true;
@@ -438,8 +447,9 @@
         return;
       }
     } catch (e) {
+      console.error('[survey] sendMessage error:', e.message);
       removeTyping();
-      addBubble('Errore di connessione. Riprova tra un momento.', 'bot');
+      addBubble('Errore: ' + e.message, 'bot');
     }
 
     // Re-enable input only if no buttons are waiting for a click

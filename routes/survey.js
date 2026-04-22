@@ -287,8 +287,22 @@ router.post('/message', async (req, res) => {
 
     res.json({ reply: displayText, complete: isComplete });
   } catch (err) {
-    console.error(err);
+    console.error('[survey] Groq error:', err.status, err.message);
     res.status(500).json({ reply: 'Si è verificato un errore tecnico. Riprova tra un momento.', complete: false });
+  }
+});
+
+// Diagnostic endpoint — tests Groq connectivity directly
+router.get('/test-groq', async (req, res) => {
+  try {
+    const r = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 30,
+      messages: [{ role: 'user', content: 'Rispondi solo: OK' }],
+    });
+    res.json({ ok: true, reply: r.choices[0].message.content });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message, status: err.status });
   }
 });
 
