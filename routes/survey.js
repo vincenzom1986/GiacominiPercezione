@@ -95,7 +95,7 @@ Q3 [TUTTI | SCELTA SINGOLA]
 2. No"
 
 Q3 FOLLOW-UP solo se risponde Sì:
-"Quali prodotti hai utilizzato? (puoi sceglierne più di uno)
+"Quali prodotti hai utilizzato? Scegli max 3.
 1. Valvole e detentori
 2. Collettori
 3. Sistemi radianti a pavimento
