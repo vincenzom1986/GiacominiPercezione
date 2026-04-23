@@ -15,37 +15,18 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS dtwin_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT DEFAULT (datetime('now')),
-    objective TEXT,
-    industry TEXT,
-    target_age TEXT,
-    location TEXT,
-    n_generated INTEGER DEFAULT 0,
-    rationale TEXT,
-    stratification TEXT
+    objective TEXT, industry TEXT, target_age TEXT, location TEXT,
+    n_generated INTEGER DEFAULT 0, rationale TEXT, stratification TEXT
   );
   CREATE TABLE IF NOT EXISTS dtwin_profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER,
-    persona_json TEXT,
-    tipo_installazioni TEXT,
-    prima_associazione TEXT,
-    uso_prodotti TEXT,
-    prodotti_usati TEXT,
-    valutazione_qualita INTEGER,
-    valutazione_facilita INTEGER,
-    valutazione_prezzo INTEGER,
-    valutazione_disponibilita INTEGER,
-    valutazione_assistenza INTEGER,
-    valutazione_formazione INTEGER,
-    nps INTEGER,
-    competitor_usati TEXT,
-    barriera_non_utilizzo TEXT,
-    leva_attivazione TEXT,
-    driver_scelta TEXT,
-    canali_informazione TEXT,
-    contenuto_preferito TEXT,
-    anni_attivita TEXT,
-    regione TEXT
+    session_id INTEGER, persona_json TEXT,
+    tipo_installazioni TEXT, prima_associazione TEXT, uso_prodotti TEXT, prodotti_usati TEXT,
+    valutazione_qualita INTEGER, valutazione_facilita INTEGER, valutazione_prezzo INTEGER,
+    valutazione_disponibilita INTEGER, valutazione_assistenza INTEGER, valutazione_formazione INTEGER,
+    nps INTEGER, competitor_usati TEXT, barriera_non_utilizzo TEXT, leva_attivazione TEXT,
+    driver_scelta TEXT, canali_informazione TEXT, contenuto_preferito TEXT,
+    anni_attivita TEXT, regione TEXT
   )
 `);
 
@@ -54,64 +35,52 @@ const client = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
 });
 
-async function callGroq(systemPrompt, userPrompt, maxTokens, fast = false) {
-  const models = fast
-    ? ['llama-3.1-8b-instant']
-    : ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
-  for (const model of models) {
+async function groq(system, user, maxTokens) {
+  for (const model of ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
     try {
       const r = await client.chat.completions.create({
-        model,
-        max_tokens: maxTokens,
-        temperature: 0.75,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
+        model, max_tokens: maxTokens, temperature: 0.7,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       });
       return r.choices[0].message.content;
     } catch (err) {
-      if (err.status === 429 && models.indexOf(model) < models.length - 1) continue;
+      if (err.status === 429 && model !== 'llama-3.1-8b-instant') continue;
       throw err;
     }
   }
 }
 
+function parseJSON(raw, isArray) {
+  const m = raw.match(isArray ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/);
+  return JSON.parse(m ? m[0] : raw);
+}
+
 // ── System prompts ────────────────────────────────────────────────────────────
 
-const ANALYSIS_SYS = `Sei un ricercatore di mercato senior specializzato in studi B2B nel settore HVAC italiano.
-Devi determinare il campione minimo necessario e il piano di stratificazione per un'analisi su installatori/idraulici italiani.
+const SYS_ANALYSIS = `Sei un ricercatore di mercato senior B2B nel settore HVAC italiano.
+Determina campione minimo con n = z²·p·(1-p)/e²:
+- esplorativa (awareness/usage): e=0.12 → n≈67 → usa 30 (budget token limitato)
+- descrittiva (confronto sottogruppi): e=0.10 → n≈97 → usa 36
+- Limita SEMPRE N tra 20 e 36.
+Rispondi SOLO con JSON valido, zero testo fuori dal JSON.`;
 
-Formula campionamento: n = z²·p·(1-p)/e²
-- Analisi esplorativa (awareness, usage rate): z=1.96, p=0.5, e=0.12 → n≈67
-- Analisi descrittiva (confronto sottogruppi): z=1.96, p=0.5, e=0.10 → n≈97
-- Regola pratica: se l'obiettivo implica confronto tra ≥3 sottogruppi, aggiungi 20%
-- Limita N tra 30 e 72 per vincoli di costo API (es. 72 = 6 batch da 12)
-- Se servirebbero più di 72 profili, indica N=72 e segnalalo nel rationale
+const SYS_GEN = `Sei un ricercatore CAWI che genera campioni sintetici di installatori idraulici italiani per brand perception research su Giacomini.
 
-Rispondi ESCLUSIVAMENTE con JSON valido, zero testo fuori dal JSON.`;
+MERCATO ITALIANO (dati reali):
+- Giacomini awareness: ~70% Nord, ~40% Sud
+- Utilizzo ultimo anno: ~35-40% installatori
+- NPS: promotori 9-10 (25%), passivi 7-8 (30%), neutri 5-6 (25%), detrattori 0-4 (20%)
+- Competitor: Caleffi (leader), FAR, Ivar, Herz, Oventrop, Danfoss, WATTS
 
-const GENERATION_SYS = `Sei un esperto CAWI (Computer Assisted Web Interview) che genera campioni sintetici per brand perception research.
-Stai simulando installatori idraulici italiani per un'analisi su Giacomini.
-
-DATI DI MERCATO REALI (usali per il realismo dei profili):
-- Giacomini: brand premium italiano, awareness ~70% Nord, ~40% Sud/Isole
-- Quota utilizzo ultimo anno: ~35-40% del campione installatori
-- Competitor per quota: Caleffi (leader), FAR Rubinetterie, Ivar, Herz, Oventrop, Danfoss, WATTS
-- NPS atteso: promotori 9-10 (25%), passivi 7-8 (30%), neutri 5-6 (25%), detrattori 0-4 (20%)
-- Canali info: Rappresentanti commerciali (72%), Passaparola colleghi (61%), YouTube/social (38% under 40)
-- Distribuzione installatori per area: Nord-Ovest 28%, Nord-Est 17%, Centro 25%, Sud/Isole 30%
-
-REGOLE DI COERENZA INTERNA (obbligatorie, viola = profilo invalido):
+REGOLE COERENZA INTERNA (obbligatorie):
 1. uso_prodotti="Sì" → valutazioni 1-5 NON null, nps 0-10 NON null, barriera=null, leva=null
-2. uso_prodotti="No" → valutazioni=null, nps=null, barriera_non_utilizzo NON null, leva_attivazione NON null
-3. prima_associazione="Non la conosco bene" → uso_prodotti DEVE essere "No"
-4. prima_associazione="Qualità e affidabilità" → nps tendenzialmente ≥7 (80% dei casi)
-5. prima_associazione="Prezzo elevato / premium" → valutazione_prezzo ≤3
-6. Installatori Sud e Isole → uso_prodotti="No" almeno 55% dei casi
-7. Distribuzione valutazioni: media ~3.5, deviazione standard ~0.9 (no risposte tutte uguali)
+2. uso_prodotti="No" → valutazioni=null, nps=null, barriera NON null, leva NON null
+3. prima_associazione="Non la conosco bene" → uso_prodotti="No"
+4. prima_associazione="Qualità e affidabilità" → nps≥7 nell'80% dei casi
+5. prima_associazione="Prezzo elevato / premium" → valutazione_prezzo≤3
+6. Regione Sud e Isole → uso_prodotti="No" almeno 55% dei casi
 
-VALORI ESATTI AMMESSI (usa solo questi, rispetta maiuscole/minuscole):
+VALORI ESATTI AMMESSI:
 tipo_installazioni: "Riscaldamento"|"Climatizzazione"|"Idrosanitario"|"Misto"
 prima_associazione: "Qualità e affidabilità"|"Made in Italy / tradizione"|"Prezzo elevato / premium"|"Innovazione e tecnologia"|"Difficile da reperire"|"Non la conosco bene"
 uso_prodotti: "Sì"|"No"
@@ -120,110 +89,94 @@ regione: "Nord-Ovest"|"Nord-Est"|"Centro"|"Sud e Isole"
 
 Rispondi ESCLUSIVAMENTE con array JSON valido. Zero testo fuori dal JSON.`;
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function extractJSON(raw, isArray = false) {
-  const pattern = isArray ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
-  const match = raw.match(pattern);
-  return JSON.parse(match ? match[0] : raw);
-}
-
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 router.post('/generate', async (req, res) => {
   const { objective, industry, targetAge, location } = req.body;
   if (!objective || objective.trim().length < 10) {
-    return res.status(400).json({ error: 'Descrivi l\'obiettivo dell\'analisi (min 10 caratteri)' });
+    return res.status(400).json({ error: 'Descrivi l\'obiettivo (min 10 caratteri)' });
   }
 
   try {
-    // ── Step 1: analyze objective, determine N and stratification ──────────
-    const analysisUser = `Obiettivo ricerca: "${objective}"
+    // ── Step 1: determine N and stratification (1 API call, ~5s) ──────────
+    const analysisRaw = await groq(SYS_ANALYSIS,
+      `Obiettivo: "${objective}"
 Industry: ${industry || 'Installatori/Idraulici italiani'}
 Target età: ${targetAge || 'Tutte le fasce'}
-Localizzazione: ${location || 'Italia (nazionale)'}
+Localizzazione: ${location || 'Italia'}
 
-Restituisci JSON con questa struttura esatta:
-{
-  "n": <intero 30-72>,
-  "rationale": "<2 frasi che spiegano N con riferimento alla formula statistica e all'obiettivo>",
-  "test_type": "<tipo di analisi: esplorativa|descrittiva|comparativa>",
-  "stratification": {
-    "geographic": {"Nord-Ovest": <pct>, "Nord-Est": <pct>, "Centro": <pct>, "Sud e Isole": <pct>},
-    "specialty": {"Misto": <pct>, "Riscaldamento": <pct>, "Idrosanitario": <pct>, "Climatizzazione": <pct>},
-    "age": {"<30": <pct>, "30-44": <pct>, "45-59": <pct>, "60+": <pct>},
-    "years": {"Meno di 3 anni": <pct>, "Da 3 a 10 anni": <pct>, "Da 10 a 20 anni": <pct>, "Oltre 20 anni": <pct>},
-    "giacomini_users_pct": <int 25-50 basato su obiettivo e localizzazione>
-  }
-}`;
+JSON da restituire:
+{"n":<20-36>,"rationale":"<2 frasi con formula e motivazione>","test_type":"<esplorativa|descrittiva|comparativa>","stratification":{"geographic":{"Nord-Ovest":<pct>,"Nord-Est":<pct>,"Centro":<pct>,"Sud e Isole":<pct>},"specialty":{"Misto":<pct>,"Riscaldamento":<pct>,"Idrosanitario":<pct>,"Climatizzazione":<pct>},"age":{"<30":<pct>,"30-44":<pct>,"45-59":<pct>,"60+":<pct>},"giacomini_users_pct":<25-50>}}`,
+      600);
 
-    const analysisRaw = await callGroq(ANALYSIS_SYS, analysisUser, 700);
     let analysis;
-    try { analysis = extractJSON(analysisRaw); }
+    try { analysis = parseJSON(analysisRaw, false); }
     catch (e) {
       analysis = {
-        n: 50, rationale: 'Campione esplorativo standard (n=50).', test_type: 'esplorativa',
-        stratification: {
-          geographic: { 'Nord-Ovest': 28, 'Nord-Est': 17, 'Centro': 25, 'Sud e Isole': 30 },
+        n: 24, rationale: 'Campione esplorativo n=24 (vincolo token API).', test_type: 'esplorativa',
+        stratification: { geographic: { 'Nord-Ovest': 28, 'Nord-Est': 17, 'Centro': 25, 'Sud e Isole': 30 },
           specialty: { Misto: 40, Riscaldamento: 30, Idrosanitario: 20, Climatizzazione: 10 },
-          age: { '<30': 12, '30-44': 38, '45-59': 36, '60+': 14 },
-          years: { 'Meno di 3 anni': 10, 'Da 3 a 10 anni': 30, 'Da 10 a 20 anni': 35, 'Oltre 20 anni': 25 },
-          giacomini_users_pct: 38,
-        },
+          age: { '<30': 12, '30-44': 38, '45-59': 36, '60+': 14 }, giacomini_users_pct: 38 },
       };
     }
 
-    const n = Math.min(Math.max(parseInt(analysis.n) || 50, 30), 72);
+    const n = Math.min(Math.max(parseInt(analysis.n) || 24, 20), 36);
     const stratStr = JSON.stringify(analysis.stratification || {});
 
-    // Create session
-    const sessionInfo = db.prepare(
-      'INSERT INTO dtwin_sessions (objective, industry, target_age, location, rationale, stratification) VALUES (?,?,?,?,?,?)'
+    // Create DB session
+    const sess = db.prepare(
+      'INSERT INTO dtwin_sessions (objective,industry,target_age,location,rationale,stratification) VALUES (?,?,?,?,?,?)'
     ).run(objective, industry || '', targetAge || '', location || '', analysis.rationale || '', stratStr);
-    const sessionId = sessionInfo.lastInsertRowid;
+    const sessionId = sess.lastInsertRowid;
 
-    // ── Step 2: generate profiles in batches of 12 ────────────────────────
-    const BATCH = 12;
-    const allProfiles = [];
-
-    while (allProfiles.length < n) {
-      const batchN = Math.min(BATCH, n - allProfiles.length);
-      const startIdx = allProfiles.length + 1;
-
-      const genUser = `Obiettivo: "${objective}"
+    // ── Step 2: generate all profiles in ONE call (1 API call, ~10-15s) ───
+    const genRaw = await groq(SYS_GEN,
+      `Obiettivo: "${objective}"
 Stratificazione: ${stratStr}
-Target: ${targetAge || 'tutti'} — Location: ${location || 'Italia'}
+Target: ${targetAge || 'tutti'} | Location: ${location || 'Italia'}
 
-Genera ESATTAMENTE ${batchN} profili sintetici (ID DT_${String(startIdx).padStart(3, '0')} … DT_${String(startIdx + batchN - 1).padStart(3, '0')}).
-Rispetta la stratificazione proporzionalmente al batch.
+Genera ESATTAMENTE ${n} profili (DT_001…DT_${String(n).padStart(3, '0')}).
+Rispetta la stratificazione proporzionalmente.
 
-Formato OBBLIGATORIO (array JSON di ${batchN} oggetti):
-[{
-  "persona": {"id":"DT_001","eta":42,"genere":"M","regione_it":"Lombardia","specializzazione":"Misto","anni_att":"Da 10 a 20 anni"},
-  "risposte": {"tipo_installazioni":"Misto","prima_associazione":"Qualità e affidabilità","uso_prodotti":"Sì","prodotti_usati":"Valvole e detentori, Collettori","valutazione_qualita":4,"valutazione_facilita":4,"valutazione_prezzo":3,"valutazione_disponibilita":3,"valutazione_assistenza":4,"valutazione_formazione":3,"nps":7,"competitor_usati":"Caleffi, Ivar","barriera_non_utilizzo":null,"leva_attivazione":null,"driver_scelta":"Affidabilità nel tempo, Disponibilità immediata","canali_informazione":"Rappresentanti commerciali, Colleghi e passaparola","contenuto_preferito":"Video montaggio collettore","anni_attivita":"Da 10 a 20 anni","regione":"Nord-Ovest"}
-}]`;
+Array JSON di ${n} oggetti con questa struttura:
+[{"persona":{"id":"DT_001","eta":42,"genere":"M","regione_it":"Lombardia","specializzazione":"Misto","anni_att":"Da 10 a 20 anni"},"risposte":{"tipo_installazioni":"Misto","prima_associazione":"Qualità e affidabilità","uso_prodotti":"Sì","prodotti_usati":"Valvole e detentori, Collettori","valutazione_qualita":4,"valutazione_facilita":4,"valutazione_prezzo":3,"valutazione_disponibilita":3,"valutazione_assistenza":4,"valutazione_formazione":3,"nps":7,"competitor_usati":"Caleffi, Ivar","barriera_non_utilizzo":null,"leva_attivazione":null,"driver_scelta":"Affidabilità nel tempo, Disponibilità immediata","canali_informazione":"Rappresentanti commerciali, Colleghi e passaparola","contenuto_preferito":"Video montaggio collettore","anni_attivita":"Da 10 a 20 anni","regione":"Nord-Ovest"}}]`,
+      4096);
 
-      try {
-        const raw = await callGroq(GENERATION_SYS, genUser, 2400, true);
-        const batch = extractJSON(raw, true);
-        if (Array.isArray(batch)) allProfiles.push(...batch.slice(0, batchN));
-      } catch (e) {
-        console.error('[dtwin] batch error:', e.message);
+    let profiles = [];
+    try {
+      const parsed = parseJSON(genRaw, true);
+      if (Array.isArray(parsed)) profiles = parsed.slice(0, n);
+    } catch (e) {
+      console.error('[dtwin] JSON parse error:', e.message, genRaw.substring(0, 200));
+      // Fallback: try to extract partial profiles
+      const partial = [];
+      const regex = /\{[^{}]*"id"\s*:\s*"DT_[\s\S]*?\}(?=\s*[,\]])/g;
+      let match;
+      while ((match = regex.exec(genRaw)) !== null) {
+        try { partial.push(JSON.parse(match[0])); } catch (e2) {}
       }
+      if (partial.length < 5) {
+        db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
+        return res.status(500).json({ error: 'Il modello AI non ha restituito JSON valido. Riprova.' });
+      }
+      profiles = partial;
     }
 
-    // ── Step 3: persist profiles ──────────────────────────────────────────
+    if (!profiles.length) {
+      db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
+      return res.status(500).json({ error: 'Nessun profilo generato. Riprova.' });
+    }
+
+    // ── Step 3: persist to DB ─────────────────────────────────────────────
     const ins = db.prepare(`INSERT INTO dtwin_profiles (
-      session_id, persona_json,
-      tipo_installazioni, prima_associazione, uso_prodotti, prodotti_usati,
-      valutazione_qualita, valutazione_facilita, valutazione_prezzo,
-      valutazione_disponibilita, valutazione_assistenza, valutazione_formazione,
-      nps, competitor_usati, barriera_non_utilizzo, leva_attivazione,
-      driver_scelta, canali_informazione, contenuto_preferito, anni_attivita, regione
+      session_id,persona_json,tipo_installazioni,prima_associazione,uso_prodotti,prodotti_usati,
+      valutazione_qualita,valutazione_facilita,valutazione_prezzo,valutazione_disponibilita,
+      valutazione_assistenza,valutazione_formazione,nps,competitor_usati,barriera_non_utilizzo,
+      leva_attivazione,driver_scelta,canali_informazione,contenuto_preferito,anni_attivita,regione
     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
-    db.transaction((profiles) => {
-      for (const p of profiles) {
+    db.transaction((profs) => {
+      for (const p of profs) {
         const r = p.risposte || {};
         ins.run(
           sessionId, JSON.stringify(p.persona || {}),
@@ -235,17 +188,14 @@ Formato OBBLIGATORIO (array JSON di ${batchN} oggetti):
           r.anni_attivita, r.regione
         );
       }
-    })(allProfiles);
+    })(profiles);
 
-    db.prepare('UPDATE dtwin_sessions SET n_generated=? WHERE id=?').run(allProfiles.length, sessionId);
+    db.prepare('UPDATE dtwin_sessions SET n_generated=? WHERE id=?').run(profiles.length, sessionId);
 
     res.json({
-      sessionId,
-      n: allProfiles.length,
-      rationale: analysis.rationale,
-      testType: analysis.test_type,
-      stratification: analysis.stratification,
-      profiles: allProfiles,
+      sessionId, n: profiles.length,
+      rationale: analysis.rationale, testType: analysis.test_type,
+      stratification: analysis.stratification, profiles,
     });
 
   } catch (err) {
@@ -255,8 +205,7 @@ Formato OBBLIGATORIO (array JSON di ${batchN} oggetti):
 });
 
 router.get('/sessions', (req, res) => {
-  const rows = db.prepare('SELECT * FROM dtwin_sessions ORDER BY created_at DESC LIMIT 10').all();
-  res.json(rows);
+  res.json(db.prepare('SELECT * FROM dtwin_sessions ORDER BY created_at DESC LIMIT 10').all());
 });
 
 router.get('/results/:id', (req, res) => {

@@ -904,12 +904,12 @@
     btn.disabled = true;
     loading.style.display = 'inline';
 
-    const steps = ['Analisi obiettivo…', 'Calcolo campione…', 'Generazione profili batch 1…', 'Generazione profili batch 2…', 'Generazione profili batch 3…', 'Finalizzazione…'];
+    const steps = ['Analisi obiettivo e calcolo N…', 'Generazione profili in corso (può richiedere 20-30s)…', 'Finalizzazione…'];
     let stepIdx = 0;
     const stepTimer = setInterval(() => {
       stepIdx = Math.min(stepIdx + 1, steps.length - 1);
       loadingText.textContent = steps[stepIdx];
-    }, 8000);
+    }, 12000);
 
     try {
       const res = await fetch('/api/dtwin/generate', {
@@ -928,7 +928,12 @@
       renderDTWIN(data);
     } catch (e) {
       clearInterval(stepTimer);
-      alert('Errore: ' + e.message);
+      const msg = e.message || '';
+      if (msg.includes('429') || msg.includes('Rate limit')) {
+        alert('Limite giornaliero Groq raggiunto (100k token/giorno). Riprova domani o aggiorna a Groq Dev Tier su console.groq.com.');
+      } else {
+        alert('Errore generazione: ' + msg);
+      }
     } finally {
       btn.disabled = false;
       loading.style.display = 'none';
