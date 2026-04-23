@@ -418,10 +418,17 @@
     <div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div class="sub-title" style="margin-bottom:0">Risposte recenti</div>
-        <a id="export-btn" href="/api/survey/export" download
-           style="background:var(--red);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(200,16,46,0.25)">
-          ↓ Scarica CSV
-        </a>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a id="export-btn" href="/api/survey/export" download
+             style="background:var(--red);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(200,16,46,0.25)">
+            ↓ Scarica CSV
+          </a>
+          <button id="reset-btn"
+             onclick="resetSurvey()"
+             style="background:#fff;color:#666;border:1.5px solid #ddd;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer">
+            ✕ Azzera risultati
+          </button>
+        </div>
       </div>
       <div id="export-warning" style="display:none;font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;padding:7px 14px;border-radius:6px;margin-bottom:12px">
         ⚠ Railway cancella i dati ad ogni deploy. Scarica il CSV prima di fare push.
@@ -536,6 +543,29 @@
     el.innerHTML = items.map(item =>
       `<div class="simple-item"><span>${item.label || item}</span><span class="simple-count">${item.count}</span></div>`
     ).join('');
+  }
+
+  // --- Survey reset ---
+  async function resetSurvey() {
+    if (!confirm('Sei sicuro di voler eliminare tutte le risposte? L\'operazione è irreversibile.')) return;
+    const btn = document.getElementById('reset-btn');
+    btn.disabled = true;
+    btn.textContent = 'Eliminazione…';
+    try {
+      const res = await fetch('/api/survey/reset', { method: 'DELETE' });
+      const d = await res.json();
+      if (d.ok) {
+        alert('Dati eliminati: ' + d.deleted + ' risposte rimosse.');
+        loadSurvey();
+      } else {
+        alert('Errore: ' + (d.error || 'sconosciuto'));
+      }
+    } catch (e) {
+      alert('Errore di connessione.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '✕ Azzera risultati';
+    }
   }
 
   // --- Survey ---

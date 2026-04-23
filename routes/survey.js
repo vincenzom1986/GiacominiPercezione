@@ -321,6 +321,15 @@ router.get('/test-groq', async (req, res) => {
   }
 });
 
+router.delete('/reset', (req, res) => {
+  try {
+    const info = db.prepare('DELETE FROM responses').run();
+    res.json({ ok: true, deleted: info.changes });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 function saveResponses(sessionId, messages, d) {
   const vals = (d.valutazione || '').split(/[\s,;/\-]+/).map(v => parseInt(v.trim()) || null);
   db.prepare(`
