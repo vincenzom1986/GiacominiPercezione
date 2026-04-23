@@ -6,6 +6,7 @@ const surveyRouter = require('./routes/survey');
 const brandwatchRouter = require('./routes/brandwatch');
 const trendsRouter = require('./routes/trends');
 const synthesisRouter = require('./routes/synthesis');
+const dtwinRouter = require('./routes/dtwin');
 
 const app = express();
 app.use(express.json());
@@ -17,6 +18,7 @@ app.use('/api/survey', surveyRouter);
 app.use('/api/brandwatch', brandwatchRouter);
 app.use('/api/trends', trendsRouter);
 app.use('/api/synthesis', synthesisRouter);
+app.use('/api/dtwin', dtwinRouter);
 
 app.get('/', (req, res) => res.redirect('/survey'));
 app.get('/survey', (req, res) => res.sendFile(path.join(__dirname, 'public', 'survey.html')));

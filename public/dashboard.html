@@ -149,6 +149,8 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } .tab-content { padding: 16px; } }
 
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .chart-wrap { position: relative; height: 240px; }
 
     /* ── SUB TITLE ── */
@@ -319,6 +321,7 @@
 
 <div class="tabs">
   <div class="tab active" data-tab="data">Dati</div>
+  <div class="tab" data-tab="dtwin">Digital Twin</div>
   <div class="tab" data-tab="synthesis">Sintesi AI</div>
 </div>
 
@@ -479,7 +482,113 @@
 
 </div>
 
-<!-- TAB 2: SINTESI AI -->
+<!-- TAB 2: DIGITAL TWIN -->
+<div class="tab-content" id="tab-dtwin">
+  <div class="section">
+    <div class="section-title">Generatore Digital Twin <span class="badge" id="dt-badge" style="display:none"></span></div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.6">
+      Descrive l'obiettivo dell'analisi: il sistema calcola il campione sintetico minimo necessario con formula statistica (n = z²·p·(1-p)/e²), genera profili coerenti con la distribuzione reale degli installatori italiani e li salva per confronto con i dati reali.
+    </p>
+
+    <!-- Form -->
+    <div style="background:var(--gray-sub);border:1px solid var(--gray-border);border-radius:10px;padding:20px;margin-bottom:20px">
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">OBIETTIVO DELL'ANALISI <span style="color:var(--red)">*</span></label>
+        <textarea id="dt-objective" rows="3" placeholder="es. Capire la brand awareness di Giacomini tra gli idraulici under 45 del Nord Italia, identificare le barriere all'adozione e confrontare il posizionamento percepito vs competitor" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.5;outline:none" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='#ddd'"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">INDUSTRY</label>
+          <input id="dt-industry" type="text" value="Installatori / Idraulici italiani" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='#ddd'">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">FASCIA ETÀ TARGET</label>
+          <select id="dt-age" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;background:#fff">
+            <option value="">Tutte le fasce</option>
+            <option value="Under 30">Under 30</option>
+            <option value="30-44 anni">30–44 anni</option>
+            <option value="45-59 anni">45–59 anni</option>
+            <option value="Over 60">Over 60</option>
+            <option value="Under 45 (giovani)">Under 45</option>
+            <option value="Over 45 (senior)">Over 45</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">LOCALIZZAZIONE</label>
+          <select id="dt-location" style="width:100%;border:1.5px solid #ddd;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;background:#fff">
+            <option value="Italia (nazionale)">Italia — nazionale</option>
+            <option value="Nord Italia">Nord Italia</option>
+            <option value="Centro Italia">Centro Italia</option>
+            <option value="Sud e Isole">Sud e Isole</option>
+            <option value="Nord-Ovest (Lombardia, Piemonte, Liguria)">Nord-Ovest</option>
+            <option value="Nord-Est (Veneto, Emilia, Friuli)">Nord-Est</option>
+          </select>
+        </div>
+      </div>
+      <button id="dt-generate-btn" onclick="generateDTWIN()" style="background:var(--red);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(200,16,46,0.3)">
+        ⚡ Genera Digital Twin
+      </button>
+      <span id="dt-loading" style="display:none;font-size:13px;color:var(--text-muted);margin-left:14px">
+        <span id="dt-loading-text">Analisi obiettivo…</span> <span style="animation:spin 1s linear infinite;display:inline-block">↻</span>
+      </span>
+    </div>
+
+    <!-- Methodology box (shown after generation) -->
+    <div id="dt-methodology" style="display:none;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:16px 20px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Nota metodologica</div>
+      <div id="dt-method-text" style="font-size:13px;color:#0c4a6e;line-height:1.6"></div>
+    </div>
+
+    <!-- Aggregate stats (shown after generation) -->
+    <div id="dt-stats" style="display:none">
+      <div class="stats-row" style="margin-bottom:20px">
+        <div class="stat-card"><div class="value" id="dt-stat-n">–</div><div class="label">Digital Twin generati</div></div>
+        <div class="stat-card"><div class="value" id="dt-stat-users">–</div><div class="label">% Utilizzatori Giacomini</div></div>
+        <div class="stat-card"><div class="value" id="dt-stat-nps">–</div><div class="label">NPS medio</div></div>
+        <div class="stat-card"><div class="value" id="dt-stat-promotori">–</div><div class="label">% Promotori (9-10)</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="sub-title">Prima associazione al brand</div>
+          <canvas id="dt-chart-assoc" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div class="sub-title">Valutazioni medie (utilizzatori)</div>
+          <canvas id="dt-chart-rating" height="180"></canvas>
+        </div>
+      </div>
+
+      <!-- Profiles table -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="sub-title" style="margin-bottom:0">Profili individuali</div>
+          <button onclick="toggleProfiles()" id="dt-toggle-btn" style="background:none;border:1.5px solid #ddd;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;color:var(--text-muted)">Mostra profili ▾</button>
+        </div>
+        <div id="dt-profiles-wrap" style="display:none;overflow-x:auto">
+          <table id="dt-profiles-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Età</th><th>Regione IT</th><th>Specializ.</th>
+                <th>Tipo inst.</th><th>1ª assoc.</th><th>Uso Giac.</th>
+                <th>NPS</th><th>Q/P/F/D/A/Fo</th><th>Competitor</th>
+              </tr>
+            </thead>
+            <tbody id="dt-profiles-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Past sessions -->
+      <div style="margin-top:12px;text-align:right">
+        <button onclick="loadDTSessions()" style="background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;font-family:inherit">↩ Carica sessione precedente</button>
+      </div>
+      <div id="dt-sessions-list" style="display:none;margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: SINTESI AI -->
 <div class="tab-content" id="tab-synthesis">
   <div class="section">
     <div class="section-title">Sintesi AI</div>
@@ -777,6 +886,187 @@
     btn.disabled = false;
     btn.innerHTML = 'Genera sintesi';
   });
+
+  // --- Digital Twin ---
+  let dtChartAssoc = null;
+  let dtChartRating = null;
+
+  async function generateDTWIN() {
+    const objective = document.getElementById('dt-objective').value.trim();
+    if (objective.length < 10) {
+      alert('Descrivi l\'obiettivo dell\'analisi (almeno 10 caratteri).');
+      document.getElementById('dt-objective').focus();
+      return;
+    }
+    const btn = document.getElementById('dt-generate-btn');
+    const loading = document.getElementById('dt-loading');
+    const loadingText = document.getElementById('dt-loading-text');
+    btn.disabled = true;
+    loading.style.display = 'inline';
+
+    const steps = ['Analisi obiettivo…', 'Calcolo campione…', 'Generazione profili batch 1…', 'Generazione profili batch 2…', 'Generazione profili batch 3…', 'Finalizzazione…'];
+    let stepIdx = 0;
+    const stepTimer = setInterval(() => {
+      stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+      loadingText.textContent = steps[stepIdx];
+    }, 8000);
+
+    try {
+      const res = await fetch('/api/dtwin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objective,
+          industry: document.getElementById('dt-industry').value,
+          targetAge: document.getElementById('dt-age').value,
+          location: document.getElementById('dt-location').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore generazione');
+      clearInterval(stepTimer);
+      renderDTWIN(data);
+    } catch (e) {
+      clearInterval(stepTimer);
+      alert('Errore: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      loading.style.display = 'none';
+      loadingText.textContent = 'Analisi obiettivo…';
+    }
+  }
+
+  function renderDTWIN(data) {
+    const profiles = data.profiles || [];
+    if (!profiles.length) { alert('Nessun profilo generato. Riprova.'); return; }
+
+    // Badge
+    const badge = document.getElementById('dt-badge');
+    badge.textContent = profiles.length + ' DTWIN';
+    badge.style.display = 'inline';
+
+    // Methodology
+    document.getElementById('dt-methodology').style.display = 'block';
+    document.getElementById('dt-method-text').innerHTML =
+      `<strong>N = ${profiles.length} profili</strong> · Tipo analisi: <em>${data.testType || 'esplorativa'}</em><br>${data.rationale || ''}
+       <br><span style="font-size:12px;color:#64748b;margin-top:4px;display:block">⚠ I profili sono sintetici generati da AI. Validare con dati reali prima di decisioni strategiche.</span>`;
+
+    // Aggregate stats
+    const users = profiles.filter(p => (p.risposte || {}).uso_prodotti === 'Sì');
+    const npsList = profiles.map(p => (p.risposte || {}).nps).filter(n => n != null);
+    const avgNPS = npsList.length ? (npsList.reduce((a, b) => a + b, 0) / npsList.length).toFixed(1) : '–';
+    const promotori = npsList.filter(n => n >= 9).length;
+    document.getElementById('dt-stat-n').textContent = profiles.length;
+    document.getElementById('dt-stat-users').textContent = Math.round(users.length / profiles.length * 100) + '%';
+    document.getElementById('dt-stat-nps').textContent = avgNPS;
+    document.getElementById('dt-stat-promotori').textContent = Math.round(promotori / profiles.length * 100) + '%';
+
+    // Chart: prima associazione
+    const assocCount = {};
+    profiles.forEach(p => {
+      const a = (p.risposte || {}).prima_associazione || 'N/D';
+      assocCount[a] = (assocCount[a] || 0) + 1;
+    });
+    const assocLabels = Object.keys(assocCount);
+    const assocVals = Object.values(assocCount);
+    if (dtChartAssoc) dtChartAssoc.destroy();
+    dtChartAssoc = new Chart(document.getElementById('dt-chart-assoc'), {
+      type: 'bar',
+      data: {
+        labels: assocLabels.map(l => l.length > 22 ? l.substring(0, 22) + '…' : l),
+        datasets: [{ data: assocVals, backgroundColor: '#C8102E', borderRadius: 5 }],
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+
+    // Chart: average ratings
+    if (users.length) {
+      const dims = ['valutazione_qualita', 'valutazione_facilita', 'valutazione_prezzo', 'valutazione_disponibilita', 'valutazione_assistenza', 'valutazione_formazione'];
+      const dimLabels = ['Qualità', 'Facilità inst.', 'Q/Prezzo', 'Disponibilità', 'Assistenza', 'Formazione'];
+      const avgRatings = dims.map(d => {
+        const vals = users.map(p => (p.risposte || {})[d]).filter(v => v != null);
+        return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : 0;
+      });
+      if (dtChartRating) dtChartRating.destroy();
+      dtChartRating = new Chart(document.getElementById('dt-chart-rating'), {
+        type: 'bar',
+        data: {
+          labels: dimLabels,
+          datasets: [{ data: avgRatings, backgroundColor: 'rgba(200,16,46,0.7)', borderRadius: 5 }],
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { min: 1, max: 5 } } },
+      });
+    }
+
+    // Profiles table
+    const tbody = document.getElementById('dt-profiles-body');
+    tbody.innerHTML = '';
+    profiles.forEach(p => {
+      const pe = p.persona || {};
+      const r = p.risposte || {};
+      const ratings = r.uso_prodotti === 'Sì'
+        ? [r.valutazione_qualita, r.valutazione_facilita, r.valutazione_prezzo,
+           r.valutazione_disponibilita, r.valutazione_assistenza, r.valutazione_formazione].join('/')
+        : '–';
+      tbody.innerHTML += `<tr>
+        <td style="color:var(--text-muted);font-size:11px">${pe.id || '–'}</td>
+        <td>${pe.eta || '–'}</td>
+        <td style="font-size:12px">${pe.regione_it || r.regione || '–'}</td>
+        <td style="font-size:12px">${pe.specializzazione || '–'}</td>
+        <td style="font-size:12px">${r.tipo_installazioni || '–'}</td>
+        <td style="font-size:11px;max-width:120px">${(r.prima_associazione || '–').substring(0, 28)}</td>
+        <td><span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${r.uso_prodotti === 'Sì' ? '#dcfce7' : '#fee2e2'};color:${r.uso_prodotti === 'Sì' ? '#15803d' : '#b91c1c'}">${r.uso_prodotti || '–'}</span></td>
+        <td style="font-weight:600;color:${r.nps >= 9 ? '#15803d' : r.nps >= 7 ? '#ca8a04' : r.nps != null ? '#b91c1c' : 'var(--text-muted)'}">${r.nps != null ? r.nps : '–'}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${ratings}</td>
+        <td style="font-size:11px">${(r.competitor_usati || '–').substring(0, 24)}</td>
+      </tr>`;
+    });
+
+    document.getElementById('dt-stats').style.display = 'block';
+  }
+
+  function toggleProfiles() {
+    const wrap = document.getElementById('dt-profiles-wrap');
+    const btn = document.getElementById('dt-toggle-btn');
+    const visible = wrap.style.display !== 'none';
+    wrap.style.display = visible ? 'none' : 'block';
+    btn.textContent = visible ? 'Mostra profili ▾' : 'Nascondi profili ▴';
+  }
+
+  async function loadDTSessions() {
+    const list = document.getElementById('dt-sessions-list');
+    list.style.display = 'block';
+    const res = await fetch('/api/dtwin/sessions');
+    const sessions = await res.json();
+    if (!sessions.length) { list.innerHTML = '<p style="font-size:13px;color:var(--text-muted)">Nessuna sessione salvata.</p>'; return; }
+    list.innerHTML = sessions.map(s =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--gray-border);border-radius:6px;margin-bottom:6px;font-size:12px">
+        <div><strong>${s.n_generated} DTWIN</strong> · ${s.created_at.substring(0, 16)} · <em style="color:var(--text-muted)">${(s.objective||'').substring(0, 60)}…</em></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="loadDTSession(${s.id})" style="background:var(--red);color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit">Carica</button>
+          <button onclick="deleteDTSession(${s.id}, this)" style="background:none;border:1px solid #ddd;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit">Elimina</button>
+        </div>
+      </div>`
+    ).join('');
+  }
+
+  async function loadDTSession(id) {
+    const res = await fetch('/api/dtwin/results/' + id);
+    const data = await res.json();
+    const profiles = (data.profiles || []).map(p => {
+      let persona = {};
+      try { persona = JSON.parse(p.persona_json || '{}'); } catch(e) {}
+      return { persona, risposte: p };
+    });
+    renderDTWIN({ profiles, rationale: data.session.rationale, n: profiles.length, testType: 'salvata' });
+    document.getElementById('dt-sessions-list').style.display = 'none';
+  }
+
+  async function deleteDTSession(id, btn) {
+    if (!confirm('Eliminare questa sessione?')) return;
+    await fetch('/api/dtwin/' + id, { method: 'DELETE' });
+    btn.closest('div[style]').remove();
+  }
 
   // --- Init & polling ---
   loadSurvey();
