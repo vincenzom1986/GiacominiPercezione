@@ -320,13 +320,14 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" data-tab="data">Dati</div>
-  <div class="tab" data-tab="dtwin">Digital Twin</div>
-  <div class="tab" data-tab="synthesis">Sintesi AI</div>
+  <div class="tab active" data-tab="survey">Survey</div>
+  <div class="tab" data-tab="dtwin">D-Twin</div>
+  <div class="tab" data-tab="listening">Listening</div>
+  <div class="tab" data-tab="insight">Insight</div>
 </div>
 
-<!-- TAB 1: DATI -->
-<div class="tab-content active" id="tab-data">
+<!-- TAB 1: SURVEY -->
+<div class="tab-content active" id="tab-survey">
 
   <!-- Survey -->
   <div class="section">
@@ -455,7 +456,11 @@
     <div class="last-update" id="survey-update"></div>
   </div>
 
-  <!-- Social Listening -->
+
+</div>
+
+<!-- TAB 3: LISTENING -->
+<div class="tab-content" id="tab-listening">
   <div class="section">
     <div class="section-title">Social Listening <span class="badge" id="bw-badge">Brandwatch</span></div>
     <div class="mock-notice" id="bw-mock">Dati demo — configura le variabili Brandwatch su Railway per dati reali</div>
@@ -479,7 +484,6 @@
       <div class="posts-list" id="posts-list"></div>
     </div>
   </div>
-
 </div>
 
 <!-- TAB 2: DIGITAL TWIN -->
@@ -548,14 +552,51 @@
         <div class="stat-card"><div class="value" id="dt-stat-promotori">–</div><div class="label">% Promotori (9-10)</div></div>
       </div>
 
+      <!-- Row 1: associazione + valutazioni -->
       <div class="grid-2" style="margin-bottom:20px">
-        <div class="card">
+        <div>
           <div class="sub-title">Prima associazione al brand</div>
-          <canvas id="dt-chart-assoc" height="180"></canvas>
+          <div class="chart-wrap"><canvas id="dt-chart-assoc"></canvas></div>
         </div>
-        <div class="card">
-          <div class="sub-title">Valutazioni medie (utilizzatori)</div>
-          <canvas id="dt-chart-rating" height="180"></canvas>
+        <div>
+          <div class="sub-title">Valutazioni medie utilizzatori (scala 1–5)</div>
+          <div class="chart-wrap"><canvas id="dt-chart-rating"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Row 2: NPS breakdown + competitor -->
+      <div class="grid-2" style="margin-bottom:20px">
+        <div>
+          <div class="sub-title">NPS — Promotori / Passivi / Detrattori</div>
+          <div class="chart-wrap"><canvas id="dt-chart-nps"></canvas></div>
+        </div>
+        <div>
+          <div class="sub-title">Competitor usati (menzioni)</div>
+          <div class="chart-wrap"><canvas id="dt-chart-competitor"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Row 3: regione + tipo installazioni -->
+      <div class="grid-2" style="margin-bottom:20px">
+        <div>
+          <div class="sub-title">Area geografica</div>
+          <div class="chart-wrap"><canvas id="dt-chart-regione"></canvas></div>
+        </div>
+        <div>
+          <div class="sub-title">Tipo installazioni</div>
+          <div class="chart-wrap"><canvas id="dt-chart-tipo"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Row 4: anni attività + canali informazione -->
+      <div class="grid-2" style="margin-bottom:20px">
+        <div>
+          <div class="sub-title">Anni di attività</div>
+          <div class="chart-wrap"><canvas id="dt-chart-anni"></canvas></div>
+        </div>
+        <div>
+          <div class="sub-title">Canali di informazione (menzioni)</div>
+          <div class="chart-wrap"><canvas id="dt-chart-canale"></canvas></div>
         </div>
       </div>
 
@@ -588,14 +629,33 @@
   </div>
 </div>
 
-<!-- TAB 3: SINTESI AI -->
-<div class="tab-content" id="tab-synthesis">
+<!-- TAB 4: INSIGHT -->
+<div class="tab-content" id="tab-insight">
   <div class="section">
-    <div class="section-title">Sintesi AI</div>
-    <p style="font-size:14px;color:#555;margin-bottom:20px">
-      L'AI analizza tutti i dati disponibili (survey e social listening) e produce una sintesi strategica sulla percezione del brand Giacomini.
+    <div class="section-title">Insight AI</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.6">
+      L'AI produce una sintesi strategica sulla percezione del brand Giacomini a partire dalle fonti selezionate. Puoi generare anche con una sola fonte attiva.
     </p>
-    <button id="generate-btn">Genera sintesi</button>
+
+    <div style="background:var(--gray-sub);border:1px solid var(--gray-border);border-radius:10px;padding:16px 20px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">Fonti da includere</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="src-survey" checked style="accent-color:var(--red);width:16px;height:16px">
+          <span><strong>Survey CAWI</strong> — risposte reali degli installatori</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="src-dtwin" checked style="accent-color:var(--red);width:16px;height:16px">
+          <span><strong>Digital Twin</strong> — campione sintetico AI (ultima sessione)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="src-listening" checked style="accent-color:var(--red);width:16px;height:16px">
+          <span><strong>Social Listening</strong> — dati Brandwatch</span>
+        </label>
+      </div>
+    </div>
+
+    <button id="generate-btn">Genera Insight</button>
     <div id="synthesis-output"></div>
   </div>
 </div>
@@ -850,30 +910,51 @@
     }
   }
 
-  // --- Synthesis ---
+  // --- Insight / Synthesis ---
   document.getElementById('generate-btn').addEventListener('click', async () => {
     const btn = document.getElementById('generate-btn');
     const output = document.getElementById('synthesis-output');
+
+    const useSurvey    = document.getElementById('src-survey').checked;
+    const useDTwin     = document.getElementById('src-dtwin').checked;
+    const useListening = document.getElementById('src-listening').checked;
+
+    if (!useSurvey && !useDTwin && !useListening) {
+      alert('Seleziona almeno una fonte di dati.');
+      return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<span class="loading-spinner"></span>Generazione in corso…';
     output.style.display = 'none';
 
     try {
-      const [bwRes, surveyRes] = await Promise.all([
-        fetch('/api/brandwatch').then(r => r.json()),
-        fetch('/api/survey/results').then(r => r.json()),
-      ]);
+      const payload = {};
+
+      const fetches = [];
+      if (useSurvey)    fetches.push(fetch('/api/survey/results').then(r => r.json()).then(d => { payload.survey = d; }));
+      if (useListening) fetches.push(fetch('/api/brandwatch').then(r => r.json()).then(d => { payload.brandwatch = d; }));
+      if (useDTwin) {
+        fetches.push(
+          fetch('/api/dtwin/sessions').then(r => r.json()).then(async sessions => {
+            if (sessions && sessions.length) {
+              const dt = await fetch('/api/dtwin/results/' + sessions[0].id).then(r => r.json());
+              payload.dtwin = dt;
+            }
+          })
+        );
+      }
+      await Promise.all(fetches);
 
       const res = await fetch('/api/synthesis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandwatch: bwRes, survey: surveyRes }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       output.style.display = 'block';
-      output.innerHTML = data.synthesis
+      output.innerHTML = (data.synthesis || data.error || 'Nessun risultato')
         .replace(/### (.*?)(\n|$)/g, '<h3>$1</h3>')
         .replace(/## (.*?)(\n|$)/g, '<h3>$1</h3>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -884,12 +965,18 @@
     }
 
     btn.disabled = false;
-    btn.innerHTML = 'Genera sintesi';
+    btn.innerHTML = 'Genera Insight';
   });
 
   // --- Digital Twin ---
   let dtChartAssoc = null;
   let dtChartRating = null;
+  let dtChartNPS = null;
+  let dtChartCompetitor = null;
+  let dtChartRegione = null;
+  let dtChartTipo = null;
+  let dtChartAnni = null;
+  let dtChartCanale = null;
 
   async function generateDTWIN() {
     const objective = document.getElementById('dt-objective').value.trim();
@@ -972,35 +1059,96 @@
       const a = (p.risposte || {}).prima_associazione || 'N/D';
       assocCount[a] = (assocCount[a] || 0) + 1;
     });
-    const assocLabels = Object.keys(assocCount);
-    const assocVals = Object.values(assocCount);
     if (dtChartAssoc) dtChartAssoc.destroy();
-    dtChartAssoc = new Chart(document.getElementById('dt-chart-assoc'), {
-      type: 'bar',
-      data: {
-        labels: assocLabels.map(l => l.length > 22 ? l.substring(0, 22) + '…' : l),
-        datasets: [{ data: assocVals, backgroundColor: '#C8102E', borderRadius: 5 }],
-      },
-      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
-    });
+    dtChartAssoc = makeChart('dt-chart-assoc', 'bar',
+      Object.keys(assocCount).map(l => l.length > 22 ? l.substring(0, 22) + '…' : l),
+      [{ data: Object.values(assocCount), backgroundColor: '#C8102E', borderRadius: 5 }],
+      { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    );
 
     // Chart: average ratings
     if (users.length) {
       const dims = ['valutazione_qualita', 'valutazione_facilita', 'valutazione_prezzo', 'valutazione_disponibilita', 'valutazione_assistenza', 'valutazione_formazione'];
       const dimLabels = ['Qualità', 'Facilità inst.', 'Q/Prezzo', 'Disponibilità', 'Assistenza', 'Formazione'];
-      const avgRatings = dims.map(d => {
-        const vals = users.map(p => (p.risposte || {})[d]).filter(v => v != null);
-        return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : 0;
+      const avgRatings = dims.map(dim => {
+        const vals = users.map(p => (p.risposte || {})[dim]).filter(v => v != null);
+        return vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : 0;
       });
       if (dtChartRating) dtChartRating.destroy();
-      dtChartRating = new Chart(document.getElementById('dt-chart-rating'), {
-        type: 'bar',
-        data: {
-          labels: dimLabels,
-          datasets: [{ data: avgRatings, backgroundColor: 'rgba(200,16,46,0.7)', borderRadius: 5 }],
-        },
-        options: { plugins: { legend: { display: false } }, scales: { y: { min: 1, max: 5 } } },
-      });
+      dtChartRating = makeChart('dt-chart-rating', 'bar', dimLabels,
+        [{ data: avgRatings, backgroundColor: 'rgba(200,16,46,0.7)', borderRadius: 5 }],
+        { plugins: { legend: { display: false } }, scales: { y: { min: 1, max: 5, ticks: { stepSize: 1 } } } }
+      );
+    }
+
+    // Chart: NPS breakdown
+    const promotoriN = npsList.filter(n => n >= 9).length;
+    const passiviN   = npsList.filter(n => n >= 7 && n <= 8).length;
+    const detrattoriN = npsList.filter(n => n < 7).length;
+    if (dtChartNPS) dtChartNPS.destroy();
+    dtChartNPS = makeChart('dt-chart-nps', 'doughnut',
+      ['Promotori (9-10)', 'Passivi (7-8)', 'Detrattori (0-6)'],
+      [{ data: [promotoriN, passiviN, detrattoriN],
+         backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderWidth: 2 }]
+    );
+
+    // Chart: competitor usati
+    const compCount = {};
+    users.forEach(p => {
+      ((p.risposte || {}).competitor_usati || '').split(',').map(c => c.trim()).filter(Boolean)
+        .forEach(c => { compCount[c] = (compCount[c] || 0) + 1; });
+    });
+    const compEntries = Object.entries(compCount).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    if (dtChartCompetitor) dtChartCompetitor.destroy();
+    if (compEntries.length) {
+      dtChartCompetitor = makeChart('dt-chart-competitor', 'bar',
+        compEntries.map(([k]) => k),
+        [{ data: compEntries.map(([, v]) => v), backgroundColor: '#d1d5db', borderRadius: 4 }],
+        { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      );
+    }
+
+    // Chart: regione
+    const regCount = {};
+    profiles.forEach(p => { const r2 = (p.risposte || {}).regione || 'N/D'; regCount[r2] = (regCount[r2] || 0) + 1; });
+    if (dtChartRegione) dtChartRegione.destroy();
+    dtChartRegione = makeChart('dt-chart-regione', 'doughnut',
+      Object.keys(regCount),
+      [{ data: Object.values(regCount), backgroundColor: COLORS_GEO, borderWidth: 2 }]
+    );
+
+    // Chart: tipo installazioni
+    const tipoCount = {};
+    profiles.forEach(p => { const t = (p.risposte || {}).tipo_installazioni || 'N/D'; tipoCount[t] = (tipoCount[t] || 0) + 1; });
+    if (dtChartTipo) dtChartTipo.destroy();
+    dtChartTipo = makeChart('dt-chart-tipo', 'doughnut',
+      Object.keys(tipoCount),
+      [{ data: Object.values(tipoCount), backgroundColor: COLORS_BRAND, borderWidth: 2 }]
+    );
+
+    // Chart: anni attività
+    const anniCount = {};
+    profiles.forEach(p => { const a = (p.risposte || {}).anni_attivita || 'N/D'; anniCount[a] = (anniCount[a] || 0) + 1; });
+    if (dtChartAnni) dtChartAnni.destroy();
+    dtChartAnni = makeChart('dt-chart-anni', 'doughnut',
+      Object.keys(anniCount),
+      [{ data: Object.values(anniCount), backgroundColor: ['#003087', '#3b82f6', '#93c5fd', '#dbeafe'], borderWidth: 2 }]
+    );
+
+    // Chart: canali informazione
+    const canaleCount = {};
+    profiles.forEach(p => {
+      ((p.risposte || {}).canali_informazione || '').split(',').map(c => c.trim()).filter(Boolean)
+        .forEach(c => { canaleCount[c] = (canaleCount[c] || 0) + 1; });
+    });
+    const canaleEntries = Object.entries(canaleCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (dtChartCanale) dtChartCanale.destroy();
+    if (canaleEntries.length) {
+      dtChartCanale = makeChart('dt-chart-canale', 'bar',
+        canaleEntries.map(([k]) => k),
+        [{ data: canaleEntries.map(([, v]) => v), backgroundColor: '#C8102Ecc', borderRadius: 4 }],
+        { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+      );
     }
 
     // Profiles table
