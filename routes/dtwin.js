@@ -39,7 +39,7 @@ async function groq(system, user, maxTokens) {
   for (const model of ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
     try {
       const r = await client.chat.completions.create({
-        model, max_tokens: maxTokens, temperature: 0.7,
+        model, max_tokens: maxTokens, temperature: 0.75,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
       });
       return r.choices[0].message.content;
@@ -59,33 +59,42 @@ function parseJSON(raw, isArray) {
 
 const SYS_ANALYSIS = `Sei un ricercatore di mercato senior B2B nel settore HVAC italiano.
 Determina campione minimo con n = z²·p·(1-p)/e²:
-- esplorativa (awareness/usage): e=0.12 → n≈67 → usa 30 (budget token limitato)
-- descrittiva (confronto sottogruppi): e=0.10 → n≈97 → usa 36
-- Limita SEMPRE N tra 20 e 36.
+- esplorativa (awareness/usage): e=0.12 → n≈67 → usa 24
+- descrittiva (confronto sottogruppi): e=0.10 → n≈97 → usa 30
+- Limita SEMPRE N tra 20 e 30.
 Rispondi SOLO con JSON valido, zero testo fuori dal JSON.`;
 
-const SYS_GEN = `Sei un ricercatore CAWI che genera campioni sintetici di installatori idraulici italiani per brand perception research su Giacomini.
+const SYS_PERSONAS = `Sei un ricercatore che crea campioni demografici sintetici di installatori idraulici italiani.
+Genera SOLO dati anagrafici e professionali — NON opinioni sul brand.
+Rispetta la stratificazione indicata. Nomi italiani realistici per regione.
+Rispondi ESCLUSIVAMENTE con array JSON. Zero testo fuori dal JSON.`;
 
-MERCATO ITALIANO (dati reali):
-- Giacomini awareness: ~70% Nord, ~40% Sud
-- Utilizzo ultimo anno: ~35-40% installatori
-- NPS: promotori 9-10 (25%), passivi 7-8 (30%), neutri 5-6 (25%), detrattori 0-4 (20%)
-- Competitor: Caleffi (leader), FAR, Ivar, Herz, Oventrop, Danfoss, WATTS
+const SYS_INTERVIEW = `Sei un intervistatore CAWI specializzato in brand perception B2B nel settore HVAC italiano.
+Ricevi un elenco di profili di installatori/idraulici. Per ognuno, INTERPRETA QUEL PERSONAGGIO e rispondi alla survey Giacomini come se fossi lui.
 
-REGOLE COERENZA INTERNA (obbligatorie):
-1. uso_prodotti="Sì" → valutazioni 1-5 NON null, nps 0-10 NON null, barriera=null, leva=null
-2. uso_prodotti="No" → valutazioni=null, nps=null, barriera NON null, leva NON null
-3. prima_associazione="Non la conosco bene" → uso_prodotti="No"
-4. prima_associazione="Qualità e affidabilità" → nps≥7 nell'80% dei casi
+CONTESTO MERCATO (usa per calibrare le risposte):
+- Giacomini awareness: ~70% Nord Italia, ~40% Sud Italia
+- Utilizzo nell'ultimo anno: ~38% degli installatori
+- NPS Giacomini: promotori 9-10 (25%), passivi 7-8 (30%), neutrali 5-6 (25%), detrattori 0-4 (20%)
+- Competitor principali: Caleffi (leader di mercato), FAR, Ivar, Herz, Oventrop, Danfoss, WATTS
+- Il brand Giacomini è percepito come qualità premium ma con distribuzione migliorabile al Sud
+
+REGOLE DI COERENZA OBBLIGATORIE (violazioni = errore grave):
+1. uso_prodotti="Sì" → valutazioni 1-5 TUTTE non null; nps 0-10 non null; barriera_non_utilizzo=null; leva_attivazione=null
+2. uso_prodotti="No" → valutazioni TUTTE null; nps=null; barriera_non_utilizzo non null; leva_attivazione non null; prodotti_usati=null
+3. prima_associazione="Non la conosco bene" → uso_prodotti="No" SEMPRE
+4. prima_associazione="Qualità e affidabilità" → nps≥7 in 80% dei casi
 5. prima_associazione="Prezzo elevato / premium" → valutazione_prezzo≤3
-6. Regione Sud e Isole → uso_prodotti="No" almeno 55% dei casi
+6. regione="Sud e Isole" → uso_prodotti="No" almeno nel 55% dei profili Sud
+7. Installatori giovani (<35 anni) → più probabilità di non conoscere Giacomini
+8. Installatori senior (>50 anni, >20 anni attività) → più probabilità di usare Giacomini
 
-VALORI ESATTI AMMESSI:
-tipo_installazioni: "Riscaldamento"|"Climatizzazione"|"Idrosanitario"|"Misto"
+VALORI ESATTI AMMESSI (usa SOLO questi, rispetta maiuscole/minuscole):
 prima_associazione: "Qualità e affidabilità"|"Made in Italy / tradizione"|"Prezzo elevato / premium"|"Innovazione e tecnologia"|"Difficile da reperire"|"Non la conosco bene"
 uso_prodotti: "Sì"|"No"
-anni_attivita: "Meno di 3 anni"|"Da 3 a 10 anni"|"Da 10 a 20 anni"|"Oltre 20 anni"
-regione: "Nord-Ovest"|"Nord-Est"|"Centro"|"Sud e Isole"
+driver_scelta: lista separata da virgole, scegli tra: "Affidabilità nel tempo","Disponibilità immediata","Prezzo competitivo","Supporto tecnico","Familiarità col brand","Consiglio del fornitore" (max 3)
+canali_informazione: lista separata da virgole, scegli tra: "Rappresentanti commerciali","Fiere di settore","Riviste specializzate","YouTube e social","Colleghi e passaparola","Sito del produttore" (max 3)
+contenuto_preferito: "Video installazione"|"Schede tecniche PDF"|"Corsi di formazione"|"Post social"|"Catalogo prodotti"|"Newsletter"
 
 Rispondi ESCLUSIVAMENTE con array JSON valido. Zero testo fuori dal JSON.`;
 
@@ -98,7 +107,7 @@ router.post('/generate', async (req, res) => {
   }
 
   try {
-    // ── Step 1: determine N and stratification (1 API call, ~5s) ──────────
+    // ── Call 1: Determine N and stratification ────────────────────────────────
     const analysisRaw = await groq(SYS_ANALYSIS,
       `Obiettivo: "${objective}"
 Industry: ${industry || 'Installatori/Idraulici italiani'}
@@ -106,104 +115,134 @@ Target età: ${targetAge || 'Tutte le fasce'}
 Localizzazione: ${location || 'Italia'}
 
 JSON da restituire:
-{"n":<20-36>,"rationale":"<2 frasi con formula e motivazione>","test_type":"<esplorativa|descrittiva|comparativa>","stratification":{"geographic":{"Nord-Ovest":<pct>,"Nord-Est":<pct>,"Centro":<pct>,"Sud e Isole":<pct>},"specialty":{"Misto":<pct>,"Riscaldamento":<pct>,"Idrosanitario":<pct>,"Climatizzazione":<pct>},"age":{"<30":<pct>,"30-44":<pct>,"45-59":<pct>,"60+":<pct>},"giacomini_users_pct":<25-50>}}`,
+{"n":<20-30>,"rationale":"<2 frasi>","test_type":"<esplorativa|descrittiva>","stratification":{"geographic":{"Nord-Ovest":<pct>,"Nord-Est":<pct>,"Centro":<pct>,"Sud e Isole":<pct>},"specialty":{"Misto":<pct>,"Riscaldamento":<pct>,"Idrosanitario":<pct>,"Climatizzazione":<pct>},"age":{"<30":<pct>,"30-44":<pct>,"45-59":<pct>,"60+":<pct>},"giacomini_users_pct":<25-50>}}`,
       600);
 
     let analysis;
     try { analysis = parseJSON(analysisRaw, false); }
-    catch (e) {
+    catch {
       analysis = {
-        n: 24, rationale: 'Campione esplorativo n=24 (vincolo token API).', test_type: 'esplorativa',
+        n: 24, rationale: 'Campione esplorativo n=24.', test_type: 'esplorativa',
         stratification: { geographic: { 'Nord-Ovest': 28, 'Nord-Est': 17, 'Centro': 25, 'Sud e Isole': 30 },
           specialty: { Misto: 40, Riscaldamento: 30, Idrosanitario: 20, Climatizzazione: 10 },
           age: { '<30': 12, '30-44': 38, '45-59': 36, '60+': 14 }, giacomini_users_pct: 38 },
       };
     }
 
-    const n = Math.min(Math.max(parseInt(analysis.n) || 24, 20), 36);
-    const stratStr = JSON.stringify(analysis.stratification || {});
+    const n = Math.min(Math.max(parseInt(analysis.n) || 24, 20), 30);
+    const strat = analysis.stratification || {};
+    const stratStr = JSON.stringify(strat);
 
-    // Create DB session
     const sess = db.prepare(
       'INSERT INTO dtwin_sessions (objective,industry,target_age,location,rationale,stratification) VALUES (?,?,?,?,?,?)'
     ).run(objective, industry || '', targetAge || '', location || '', analysis.rationale || '', stratStr);
     const sessionId = sess.lastInsertRowid;
 
-    // ── Step 2: generate all profiles in ONE call (1 API call, ~10-15s) ───
-    const genRaw = await groq(SYS_GEN,
-      `Obiettivo: "${objective}"
-Stratificazione: ${stratStr}
-Target: ${targetAge || 'tutti'} | Location: ${location || 'Italia'}
+    // ── Call 2: Generate demographic personas (simple flat JSON) ──────────────
+    const personasRaw = await groq(SYS_PERSONAS,
+      `Obiettivo analisi: "${objective}"
+Localizzazione: ${location || 'Italia nazionale'}
+Target età: ${targetAge || 'tutte'}
+Stratificazione geografica: ${JSON.stringify(strat.geographic || {})}
+Stratificazione specializzazione: ${JSON.stringify(strat.specialty || {})}
 
-Genera ESATTAMENTE ${n} profili (DT_001…DT_${String(n).padStart(3, '0')}).
-Rispetta la stratificazione proporzionalmente.
+Genera ESATTAMENTE ${n} profili demografici (ID: DT_001…DT_${String(n).padStart(3,'0')}).
+Array JSON di ${n} oggetti con SOLO questa struttura (niente altro):
+[{"id":"DT_001","nome":"Marco","cognome":"Rossi","eta":42,"genere":"M","regione_it":"Bergamo","regione":"Nord-Ovest","tipo_installazioni":"Misto","anni_attivita":"Da 10 a 20 anni"}]
 
-Array JSON di ${n} oggetti con questa struttura:
-[{"persona":{"id":"DT_001","eta":42,"genere":"M","regione_it":"Lombardia","specializzazione":"Misto","anni_att":"Da 10 a 20 anni"},"risposte":{"tipo_installazioni":"Misto","prima_associazione":"Qualità e affidabilità","uso_prodotti":"Sì","prodotti_usati":"Valvole e detentori, Collettori","valutazione_qualita":4,"valutazione_facilita":4,"valutazione_prezzo":3,"valutazione_disponibilita":3,"valutazione_assistenza":4,"valutazione_formazione":3,"nps":7,"competitor_usati":"Caleffi, Ivar","barriera_non_utilizzo":null,"leva_attivazione":null,"driver_scelta":"Affidabilità nel tempo, Disponibilità immediata","canali_informazione":"Rappresentanti commerciali, Colleghi e passaparola","contenuto_preferito":"Video montaggio collettore","anni_attivita":"Da 10 a 20 anni","regione":"Nord-Ovest"}}]`,
-      4096);
+Valori ammessi per regione: "Nord-Ovest"|"Nord-Est"|"Centro"|"Sud e Isole"
+Valori ammessi per tipo_installazioni: "Riscaldamento"|"Climatizzazione"|"Idrosanitario"|"Misto"
+Valori ammessi per anni_attivita: "Meno di 3 anni"|"Da 3 a 10 anni"|"Da 10 a 20 anni"|"Oltre 20 anni"`,
+      Math.min(n * 60 + 200, 1200));
 
-    let profiles = [];
+    let personas = [];
     try {
-      const parsed = parseJSON(genRaw, true);
-      if (Array.isArray(parsed)) profiles = parsed.slice(0, n);
-    } catch (e) {
-      console.error('[dtwin] JSON parse error:', e.message, genRaw.substring(0, 200));
-      const partial = [];
-      const regex = /\{[^{}]*"id"\s*:\s*"DT_[\s\S]*?\}(?=\s*[,\]])/g;
-      let match;
-      while ((match = regex.exec(genRaw)) !== null) {
-        try { partial.push(JSON.parse(match[0])); } catch (e2) {}
-      }
-      if (partial.length < 5) {
-        db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
-        return res.status(500).json({ error: 'Il modello AI non ha restituito JSON valido. Riprova.' });
-      }
-      profiles = partial;
-    }
-
-    if (!profiles.length) {
+      const parsed = parseJSON(personasRaw, true);
+      if (Array.isArray(parsed)) personas = parsed.slice(0, n);
+    } catch {
+      console.error('[dtwin] personas parse error, personasRaw[:300]:', personasRaw.substring(0, 300));
       db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
-      return res.status(500).json({ error: 'Nessun profilo generato. Riprova.' });
+      return res.status(500).json({ error: 'Errore nella generazione dei profili demografici. Riprova.' });
     }
 
-    // Normalize: AI sometimes returns flat objects instead of {persona, risposte}
-    profiles = profiles.map(p => {
-      if (p.risposte) return p;
+    if (personas.length < 5) {
+      db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
+      return res.status(500).json({ error: 'Troppo pochi profili generati. Riprova.' });
+    }
+
+    console.log('[dtwin] personas generated:', personas.length, 'sample[0]:', JSON.stringify(personas[0]));
+
+    // ── Call 3: Interview simulation — each twin answers the survey ───────────
+    const personasSummary = personas.map(p =>
+      `{"id":"${p.id}","eta":${p.eta || '?'},"regione":"${p.regione || '?'}","tipo_installazioni":"${p.tipo_installazioni || '?'}","anni_attivita":"${p.anni_attivita || '?'}"}`
+    ).join(',\n');
+
+    const interviewRaw = await groq(SYS_INTERVIEW,
+      `Hai ${personas.length} installatori da intervistare sulla percezione del brand Giacomini.
+Obiettivo ricerca: "${objective}"
+
+PROFILI:
+[${personasSummary}]
+
+Per OGNUNO dei ${personas.length} profili, simula le sue risposte alla survey Giacomini.
+Restituisci un array JSON di ESATTAMENTE ${personas.length} oggetti (uno per profilo, stesso ordine):
+[{"id":"DT_001","prima_associazione":"Qualità e affidabilità","uso_prodotti":"Sì","prodotti_usati":"Valvole termostatiche, Collettori","valutazione_qualita":4,"valutazione_facilita":4,"valutazione_prezzo":3,"valutazione_disponibilita":3,"valutazione_assistenza":3,"valutazione_formazione":3,"nps":7,"competitor_usati":"Caleffi, Ivar","barriera_non_utilizzo":null,"leva_attivazione":null,"driver_scelta":"Affidabilità nel tempo, Disponibilità immediata","canali_informazione":"Rappresentanti commerciali, Colleghi e passaparola","contenuto_preferito":"Video installazione"}]`,
+      Math.min(personas.length * 140 + 400, 4000));
+
+    let responses = [];
+    try {
+      const parsed = parseJSON(interviewRaw, true);
+      if (Array.isArray(parsed)) responses = parsed;
+    } catch {
+      console.error('[dtwin] interview parse error, raw[:400]:', interviewRaw.substring(0, 400));
+      // Non bloccare: usa risposte vuote, verranno segnalate nella UI
+    }
+
+    console.log('[dtwin] responses generated:', responses.length);
+
+    // Build response map by ID
+    const responseMap = {};
+    responses.forEach(r => { if (r && r.id) responseMap[r.id] = r; });
+
+    // Merge personas + responses
+    const profiles = personas.map(p => {
+      const r = responseMap[p.id] || {};
       return {
         persona: {
-          id: p.id || p.persona_id,
-          eta: p.eta || p.age,
-          genere: p.genere || p.gender || 'M',
-          regione_it: p.regione_it || p.regione_italiana || p.citta,
-          specializzazione: p.specializzazione || p.tipo_installazioni || 'Misto',
-          anni_att: p.anni_att || p.anni_attivita,
+          id: p.id,
+          eta: p.eta,
+          nome: p.nome,
+          cognome: p.cognome,
+          genere: p.genere || 'M',
+          regione_it: p.regione_it,
+          specializzazione: p.tipo_installazioni,
+          anni_att: p.anni_attivita,
         },
         risposte: {
           tipo_installazioni: p.tipo_installazioni,
-          prima_associazione: p.prima_associazione,
-          uso_prodotti: p.uso_prodotti,
-          prodotti_usati: p.prodotti_usati,
-          valutazione_qualita: p.valutazione_qualita,
-          valutazione_facilita: p.valutazione_facilita,
-          valutazione_prezzo: p.valutazione_prezzo,
-          valutazione_disponibilita: p.valutazione_disponibilita,
-          valutazione_assistenza: p.valutazione_assistenza,
-          valutazione_formazione: p.valutazione_formazione,
-          nps: p.nps,
-          competitor_usati: p.competitor_usati,
-          barriera_non_utilizzo: p.barriera_non_utilizzo,
-          leva_attivazione: p.leva_attivazione,
-          driver_scelta: p.driver_scelta,
-          canali_informazione: p.canali_informazione,
-          contenuto_preferito: p.contenuto_preferito,
-          anni_attivita: p.anni_attivita || p.anni_att,
+          prima_associazione: r.prima_associazione || null,
+          uso_prodotti: r.uso_prodotti || null,
+          prodotti_usati: r.prodotti_usati || null,
+          valutazione_qualita: r.valutazione_qualita ?? null,
+          valutazione_facilita: r.valutazione_facilita ?? null,
+          valutazione_prezzo: r.valutazione_prezzo ?? null,
+          valutazione_disponibilita: r.valutazione_disponibilita ?? null,
+          valutazione_assistenza: r.valutazione_assistenza ?? null,
+          valutazione_formazione: r.valutazione_formazione ?? null,
+          nps: r.nps ?? null,
+          competitor_usati: r.competitor_usati || null,
+          barriera_non_utilizzo: r.barriera_non_utilizzo || null,
+          leva_attivazione: r.leva_attivazione || null,
+          driver_scelta: r.driver_scelta || null,
+          canali_informazione: r.canali_informazione || null,
+          contenuto_preferito: r.contenuto_preferito || null,
+          anni_attivita: p.anni_attivita,
           regione: p.regione,
         },
       };
     });
-    console.log('[dtwin] sample profile[0]:', JSON.stringify(profiles[0]).substring(0, 300));
 
-    // ── Step 3: persist to DB ─────────────────────────────────────────────
+    // ── Persist to DB ─────────────────────────────────────────────────────────
     const ins = db.prepare(`INSERT INTO dtwin_profiles (
       session_id,persona_json,tipo_installazioni,prima_associazione,uso_prodotti,prodotti_usati,
       valutazione_qualita,valutazione_facilita,valutazione_prezzo,valutazione_disponibilita,
@@ -213,9 +252,9 @@ Array JSON di ${n} oggetti con questa struttura:
 
     db.transaction((profs) => {
       for (const p of profs) {
-        const r = p.risposte || {};
+        const r = p.risposte;
         ins.run(
-          sessionId, JSON.stringify(p.persona || {}),
+          sessionId, JSON.stringify(p.persona),
           r.tipo_installazioni, r.prima_associazione, r.uso_prodotti, r.prodotti_usati,
           r.valutazione_qualita, r.valutazione_facilita, r.valutazione_prezzo,
           r.valutazione_disponibilita, r.valutazione_assistenza, r.valutazione_formazione,
