@@ -306,6 +306,140 @@
       border-top: 1px solid #f0f0f0;
       margin: 22px 0;
     }
+
+    /* ── DT PROFILE CARDS ── */
+    .dt-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+
+    .dt-card {
+      background: #fff;
+      border: 1px solid var(--gray-border);
+      border-radius: 12px;
+      padding: 18px 14px 14px;
+      text-align: center;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+
+    .dt-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.09); transform: translateY(-2px); }
+
+    .dt-card-avatar {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+    }
+
+    .dt-card-id {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-light);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .dt-card-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .dt-card-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .dt-card-assoc {
+      font-size: 11px;
+      font-style: italic;
+      color: #555;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 8px;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .dt-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dt-card-use {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 8px;
+    }
+
+    .dt-card-use.yes { background: #dcfce7; color: #15803d; }
+    .dt-card-use.no  { background: #fee2e2; color: #b91c1c; }
+
+    /* ── POPULATION COMPARISON ── */
+    .pop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin-bottom: 4px;
+    }
+
+    .pop-block { }
+    .pop-block-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 8px;
+    }
+
+    .pop-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .pop-label { width: 110px; flex-shrink: 0; color: var(--text); }
+    .pop-bars  { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+
+    .pop-bar-line {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .pop-bar-track {
+      flex: 1;
+      background: #f0f0f0;
+      border-radius: 3px;
+      height: 7px;
+      overflow: hidden;
+    }
+
+    .pop-bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+    .pop-bar-fill.istat  { background: #d1d5db; }
+    .pop-bar-fill.sample { background: var(--red); }
+    .pop-pct { width: 30px; text-align: right; font-weight: 700; font-size: 11px; }
+    .pop-delta { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; }
+    .pop-delta.ok   { background: #dcfce7; color: #15803d; }
+    .pop-delta.warn { background: #fef9c3; color: #92400e; }
+    .pop-delta.err  { background: #fee2e2; color: #b91c1c; }
   </style>
 </head>
 <body>
@@ -545,12 +679,33 @@
 
     <!-- Aggregate stats (shown after generation) -->
     <div id="dt-stats" style="display:none">
-      <div class="stats-row" style="margin-bottom:20px">
-        <div class="stat-card"><div class="value" id="dt-stat-n">–</div><div class="label">Digital Twin generati</div></div>
+
+      <!-- KPI row -->
+      <div class="stats-row" style="margin-bottom:24px">
+        <div class="stat-card"><div class="value" id="dt-stat-n">–</div><div class="label">D-Twin generati</div></div>
         <div class="stat-card"><div class="value" id="dt-stat-users">–</div><div class="label">% Utilizzatori Giacomini</div></div>
         <div class="stat-card"><div class="value" id="dt-stat-nps">–</div><div class="label">NPS medio</div></div>
         <div class="stat-card"><div class="value" id="dt-stat-promotori">–</div><div class="label">% Promotori (9-10)</div></div>
       </div>
+
+      <!-- Population comparison -->
+      <hr class="section-divider">
+      <div class="sub-title">Distribuzione campione vs popolazione reale
+        <span style="font-size:10px;font-weight:400;color:var(--text-light);margin-left:8px;text-transform:none">fonte: ISTAT / Confartigianato 2023 · universo ~178.000 installatori IT</span>
+      </div>
+      <div class="pop-grid" id="dt-pop-grid" style="margin-bottom:20px"></div>
+
+      <!-- Profile cards -->
+      <hr class="section-divider">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="sub-title" style="margin-bottom:0">Schede D-Twin</div>
+        <span id="dt-cards-count" style="font-size:12px;color:var(--text-muted)"></span>
+      </div>
+      <div class="dt-cards-grid" id="dt-cards-grid"></div>
+
+      <!-- Charts -->
+      <hr class="section-divider">
+      <div class="sub-title" style="margin-bottom:20px">Analisi aggregata</div>
 
       <!-- Row 1: associazione + valutazioni -->
       <div class="grid-2" style="margin-bottom:20px">
@@ -1052,6 +1207,107 @@
     document.getElementById('dt-stat-users').textContent = Math.round(users.length / profiles.length * 100) + '%';
     document.getElementById('dt-stat-nps').textContent = avgNPS;
     document.getElementById('dt-stat-promotori').textContent = Math.round(promotori / profiles.length * 100) + '%';
+
+    // ── Population comparison (ISTAT / Confartigianato 2023) ──────────────────
+    const ISTAT = {
+      geo:  { 'Nord-Ovest': 28, 'Nord-Est': 20, 'Centro': 22, 'Sud e Isole': 30 },
+      age:  { 'Meno di 3 anni': 6, 'Da 3 a 10 anni': 28, 'Da 10 a 20 anni': 42, 'Oltre 20 anni': 24 },
+      tipo: { 'Misto': 42, 'Riscaldamento': 30, 'Idrosanitario': 19, 'Climatizzazione': 9 },
+      uso:  { 'Sì': 38, 'No': 62 },
+    };
+
+    const sampleGeo  = {};
+    const sampleAge  = {};
+    const sampleTipo = {};
+    const sampleUso  = {};
+    profiles.forEach(p => {
+      const r = p.risposte || {};
+      sampleGeo[r.regione || 'N/D']  = (sampleGeo[r.regione || 'N/D'] || 0) + 1;
+      sampleAge[r.anni_attivita || 'N/D'] = (sampleAge[r.anni_attivita || 'N/D'] || 0) + 1;
+      sampleTipo[r.tipo_installazioni || 'N/D'] = (sampleTipo[r.tipo_installazioni || 'N/D'] || 0) + 1;
+      sampleUso[r.uso_prodotti || 'N/D'] = (sampleUso[r.uso_prodotti || 'N/D'] || 0) + 1;
+    });
+
+    function toPct(count, total) { return total ? Math.round(count / total * 100) : 0; }
+    function deltaClass(d) { return Math.abs(d) <= 5 ? 'ok' : Math.abs(d) <= 12 ? 'warn' : 'err'; }
+
+    function buildPopBlock(title, istatObj, sampleObj, total) {
+      const rows = Object.keys(istatObj).map(key => {
+        const ref = istatObj[key];
+        const smp = toPct(sampleObj[key] || 0, total);
+        const d   = smp - ref;
+        const dStr = (d >= 0 ? '+' : '') + d + '%';
+        return `<div class="pop-row">
+          <div class="pop-label">${key}</div>
+          <div class="pop-bars">
+            <div class="pop-bar-line">
+              <span style="width:36px;color:#888">Rif.</span>
+              <div class="pop-bar-track"><div class="pop-bar-fill istat" style="width:${ref}%"></div></div>
+              <span class="pop-pct">${ref}%</span>
+            </div>
+            <div class="pop-bar-line">
+              <span style="width:36px;color:var(--red)">Twin</span>
+              <div class="pop-bar-track"><div class="pop-bar-fill sample" style="width:${smp}%"></div></div>
+              <span class="pop-pct">${smp}%</span>
+            </div>
+          </div>
+          <span class="pop-delta ${deltaClass(d)}">${dStr}</span>
+        </div>`;
+      }).join('');
+      return `<div class="pop-block"><div class="pop-block-title">${title}</div>${rows}</div>`;
+    }
+
+    const popGrid = document.getElementById('dt-pop-grid');
+    popGrid.innerHTML =
+      buildPopBlock('Area geografica', ISTAT.geo, sampleGeo, profiles.length) +
+      buildPopBlock('Anni di attività', ISTAT.age, sampleAge, profiles.length) +
+      buildPopBlock('Tipo installazioni', ISTAT.tipo, sampleTipo, profiles.length) +
+      buildPopBlock('Uso Giacomini', ISTAT.uso, sampleUso, profiles.length);
+
+    // ── Profile cards ─────────────────────────────────────────────────────────
+    const AVATAR_COLORS_NPS = (nps) => {
+      if (nps == null) return '#94a3b8';
+      if (nps >= 9)    return '#16a34a';
+      if (nps >= 7)    return '#d97706';
+      return '#dc2626';
+    };
+
+    const ASSOC_SHORT = {
+      'Qualità e affidabilità': 'Qualità e affidabilità',
+      'Made in Italy / tradizione': 'Made in Italy',
+      'Prezzo elevato / premium': 'Prezzo premium',
+      'Innovazione e tecnologia': 'Innovazione',
+      'Difficile da reperire': 'Difficile da reperire',
+      'Non la conosco bene': 'Non la conosce',
+    };
+
+    const cardsGrid = document.getElementById('dt-cards-grid');
+    document.getElementById('dt-cards-count').textContent = profiles.length + ' profili';
+    cardsGrid.innerHTML = profiles.map(p => {
+      const pe = p.persona || {};
+      const r  = p.risposte || {};
+      const nps = r.nps;
+      const initials = pe.id ? pe.id.replace('DT_', '') : '??';
+      const eta  = pe.eta ? pe.eta + ' anni' : '–';
+      const reg  = pe.regione_it || r.regione || '–';
+      const spec = r.tipo_installazioni || pe.specializzazione || '–';
+      const anni = r.anni_attivita || pe.anni_att || '–';
+      const assoc = ASSOC_SHORT[r.prima_associazione] || r.prima_associazione || '–';
+      const usaGiac = r.uso_prodotti || '–';
+      const npsColor = AVATAR_COLORS_NPS(nps);
+
+      return `<div class="dt-card">
+        <div class="dt-card-avatar" style="background:${npsColor}">${initials}</div>
+        <div class="dt-card-id">${pe.id || '–'}</div>
+        <div class="dt-card-name">${eta} · ${reg}</div>
+        <div class="dt-card-meta">${spec}<br><span style="font-size:10px;color:var(--text-light)">${anni}</span></div>
+        <div class="dt-card-assoc">"${assoc}"</div>
+        <div class="dt-card-footer">
+          <span class="dt-card-use ${usaGiac === 'Sì' ? 'yes' : 'no'}">${usaGiac === 'Sì' ? '✓ Usa Giacomini' : '✕ Non usa'}</span>
+          <span style="font-size:13px;font-weight:700;color:${npsColor}">${nps != null ? 'NPS ' + nps : '–'}</span>
+        </div>
+      </div>`;
+    }).join('');
 
     // Chart: prima associazione
     const assocCount = {};
