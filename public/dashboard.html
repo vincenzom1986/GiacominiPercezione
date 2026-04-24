@@ -1505,7 +1505,31 @@
     const profiles = (data.profiles || []).map(p => {
       let persona = {};
       try { persona = JSON.parse(p.persona_json || '{}'); } catch(e) {}
-      return { persona, risposte: p };
+      // DB row already has all survey fields at top level — wrap correctly
+      return {
+        persona,
+        risposte: {
+          tipo_installazioni: p.tipo_installazioni,
+          prima_associazione: p.prima_associazione,
+          uso_prodotti: p.uso_prodotti,
+          prodotti_usati: p.prodotti_usati,
+          valutazione_qualita: p.valutazione_qualita,
+          valutazione_facilita: p.valutazione_facilita,
+          valutazione_prezzo: p.valutazione_prezzo,
+          valutazione_disponibilita: p.valutazione_disponibilita,
+          valutazione_assistenza: p.valutazione_assistenza,
+          valutazione_formazione: p.valutazione_formazione,
+          nps: p.nps,
+          competitor_usati: p.competitor_usati,
+          barriera_non_utilizzo: p.barriera_non_utilizzo,
+          leva_attivazione: p.leva_attivazione,
+          driver_scelta: p.driver_scelta,
+          canali_informazione: p.canali_informazione,
+          contenuto_preferito: p.contenuto_preferito,
+          anni_attivita: p.anni_attivita,
+          regione: p.regione,
+        },
+      };
     });
     renderDTWIN({ profiles, rationale: data.session.rationale, n: profiles.length, testType: 'salvata' });
     document.getElementById('dt-sessions-list').style.display = 'none';
