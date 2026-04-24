@@ -596,8 +596,9 @@
 <!-- TAB 3: LISTENING -->
 <div class="tab-content" id="tab-listening">
   <div class="section">
-    <div class="section-title">Social Listening <span class="badge" id="bw-badge">Brandwatch</span></div>
-    <div class="mock-notice" id="bw-mock">Dati demo — configura le variabili Brandwatch su Railway per dati reali</div>
+    <div class="section-title">Social Listening <span class="badge" id="bw-badge">Google News</span></div>
+    <div class="mock-notice" id="bw-mock" style="display:none">Dati demo</div>
+    <div id="bw-sentiment-summary" style="display:none;font-size:13px;color:#0369a1;background:#f0f9ff;border:1px solid #bae6fd;border-radius:7px;padding:8px 14px;margin-bottom:14px"></div>
     <div class="stats-row">
       <div class="stat-card"><div class="value" id="stat-mentions">–</div><div class="label">Mention (30gg)</div></div>
       <div class="stat-card"><div class="value" id="stat-pos">–</div><div class="label">Sentiment positivo</div></div>
@@ -614,8 +615,9 @@
       </div>
     </div>
     <div style="margin-top:24px">
-      <div class="sub-title">Post rilevanti recenti</div>
+      <div class="sub-title">Articoli recenti su Giacomini</div>
       <div class="posts-list" id="posts-list"></div>
+      <div class="last-update" id="bw-update" style="margin-top:10px"></div>
     </div>
   </div>
 </div>
@@ -1023,11 +1025,35 @@
       const d = await res.json();
       const data = d.data || d;
 
-      if (d.mock) document.getElementById('bw-mock').style.display = 'block';
+      // Badge + notice
+      const badge = document.getElementById('bw-badge');
+      const mock  = document.getElementById('bw-mock');
+      if (d.mock) {
+        badge.textContent = 'Demo';
+        mock.style.display = 'block';
+        mock.textContent = '⚠ Dati demo — Google News non raggiungibile in questo momento.';
+      } else {
+        badge.textContent = d.source || 'Google News';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+        mock.style.display = 'none';
+        // Show last update
+        const upd = document.getElementById('bw-update');
+        if (upd && d.updatedAt) {
+          upd.textContent = 'Aggiornato: ' + new Date(d.updatedAt).toLocaleString('it-IT');
+        }
+      }
 
       document.getElementById('stat-mentions').textContent = (data.totalMentions || 0).toLocaleString('it-IT');
       document.getElementById('stat-pos').textContent = (data.sentiment?.positive || 0) + '%';
       document.getElementById('stat-neg').textContent = (data.sentiment?.negative || 0) + '%';
+
+      // AI sentiment summary
+      const summaryEl = document.getElementById('bw-sentiment-summary');
+      if (summaryEl && data.sentiment?.summary) {
+        summaryEl.textContent = '🤖 ' + data.sentiment.summary;
+        summaryEl.style.display = 'block';
+      }
 
       const sovEl = document.getElementById('sov-bar');
       sovEl.innerHTML = '';
@@ -1054,10 +1080,17 @@
       const postsEl = document.getElementById('posts-list');
       postsEl.innerHTML = '';
       (data.recentPosts || []).forEach(p => {
+        const linkHtml = p.link
+          ? `<a href="${p.link}" target="_blank" rel="noopener" style="font-size:11px;color:var(--red);text-decoration:none">→ Leggi</a>`
+          : '';
+        const dateHtml = p.pubDate
+          ? `<span style="font-size:10px;color:var(--text-light);margin-left:8px">${new Date(p.pubDate).toLocaleDateString('it-IT')}</span>` : '';
         postsEl.innerHTML += `
           <div class="post-item ${p.sentiment}">
             <div>${p.text}</div>
-            <div class="post-source">${p.source}</div>
+            <div class="post-source" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span>${p.source}</span>${dateHtml}${linkHtml}
+            </div>
           </div>`;
       });
     } catch (e) {
