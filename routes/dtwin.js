@@ -139,35 +139,37 @@ JSON da restituire:
     const sessionId = sess.lastInsertRowid;
 
     // ── Call 2: Generate demographic personas (simple flat JSON) ──────────────
-    const personasRaw = await groq(SYS_PERSONAS,
-      `Obiettivo analisi: "${objective}"
+    const personasPrompt = `Obiettivo analisi: "${objective}"
 Localizzazione: ${location || 'Italia nazionale'}
 Target età: ${targetAge || 'tutte'}
 Stratificazione geografica: ${JSON.stringify(strat.geographic || {})}
 Stratificazione specializzazione: ${JSON.stringify(strat.specialty || {})}
 
 Genera ESATTAMENTE ${n} profili demografici (ID: DT_001…DT_${String(n).padStart(3,'0')}).
-Array JSON di ${n} oggetti con SOLO questa struttura (niente altro):
-[{"id":"DT_001","nome":"Marco","cognome":"Rossi","eta":42,"genere":"M","regione_it":"Bergamo","regione":"Nord-Ovest","tipo_installazioni":"Misto","anni_attivita":"Da 10 a 20 anni"}]
+Array JSON di ${n} oggetti PIATTI con SOLO questi campi:
+[{"id":"DT_001","nome":"Marco","eta":42,"genere":"M","regione_it":"Bergamo","regione":"Nord-Ovest","tipo_installazioni":"Misto","anni_attivita":"Da 10 a 20 anni"}]
 
-Valori ammessi per regione: "Nord-Ovest"|"Nord-Est"|"Centro"|"Sud e Isole"
-Valori ammessi per tipo_installazioni: "Riscaldamento"|"Climatizzazione"|"Idrosanitario"|"Misto"
-Valori ammessi per anni_attivita: "Meno di 3 anni"|"Da 3 a 10 anni"|"Da 10 a 20 anni"|"Oltre 20 anni"`,
-      Math.min(n * 60 + 200, 1200));
+Valori ammessi regione: "Nord-Ovest"|"Nord-Est"|"Centro"|"Sud e Isole"
+Valori ammessi tipo_installazioni: "Riscaldamento"|"Climatizzazione"|"Idrosanitario"|"Misto"
+Valori ammessi anni_attivita: "Meno di 3 anni"|"Da 3 a 10 anni"|"Da 10 a 20 anni"|"Oltre 20 anni"`;
+
+    const personasRaw = await groq(SYS_PERSONAS, personasPrompt, 2048);
+    console.log('[dtwin] personasRaw[:400]:', personasRaw.substring(0, 400));
 
     let personas = [];
     try {
       const parsed = parseJSON(personasRaw, true);
       if (Array.isArray(parsed)) personas = parsed.slice(0, n);
-    } catch {
-      console.error('[dtwin] personas parse error, personasRaw[:300]:', personasRaw.substring(0, 300));
+    } catch (e) {
+      console.error('[dtwin] personas parse error:', e.message, '\nraw[:500]:', personasRaw.substring(0, 500));
       db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
       return res.status(500).json({ error: 'Errore nella generazione dei profili demografici. Riprova.' });
     }
 
     if (personas.length < 5) {
+      console.error('[dtwin] too few personas:', personas.length);
       db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
-      return res.status(500).json({ error: 'Troppo pochi profili generati. Riprova.' });
+      return res.status(500).json({ error: `Solo ${personas.length} profili generati (minimo 5). Riprova.` });
     }
 
     console.log('[dtwin] personas generated:', personas.length, 'sample[0]:', JSON.stringify(personas[0]));
@@ -187,7 +189,8 @@ PROFILI:
 Per OGNUNO dei ${personas.length} profili, simula le sue risposte alla survey Giacomini.
 Restituisci un array JSON di ESATTAMENTE ${personas.length} oggetti (uno per profilo, stesso ordine):
 [{"id":"DT_001","prima_associazione":"Qualità e affidabilità","uso_prodotti":"Sì","prodotti_usati":"Valvole termostatiche, Collettori","valutazione_qualita":4,"valutazione_facilita":4,"valutazione_prezzo":3,"valutazione_disponibilita":3,"valutazione_assistenza":3,"valutazione_formazione":3,"nps":7,"competitor_usati":"Caleffi, Ivar","barriera_non_utilizzo":null,"leva_attivazione":null,"driver_scelta":"Affidabilità nel tempo, Disponibilità immediata","canali_informazione":"Rappresentanti commerciali, Colleghi e passaparola","contenuto_preferito":"Video installazione"}]`,
-      Math.min(personas.length * 140 + 400, 4000));
+      4096);
+    console.log('[dtwin] interviewRaw[:400]:', interviewRaw.substring(0, 400));
 
     let responses = [];
     try {
