@@ -148,7 +148,6 @@ Array JSON di ${n} oggetti con questa struttura:
       if (Array.isArray(parsed)) profiles = parsed.slice(0, n);
     } catch (e) {
       console.error('[dtwin] JSON parse error:', e.message, genRaw.substring(0, 200));
-      // Fallback: try to extract partial profiles
       const partial = [];
       const regex = /\{[^{}]*"id"\s*:\s*"DT_[\s\S]*?\}(?=\s*[,\]])/g;
       let match;
@@ -166,6 +165,43 @@ Array JSON di ${n} oggetti con questa struttura:
       db.prepare('DELETE FROM dtwin_sessions WHERE id=?').run(sessionId);
       return res.status(500).json({ error: 'Nessun profilo generato. Riprova.' });
     }
+
+    // Normalize: AI sometimes returns flat objects instead of {persona, risposte}
+    profiles = profiles.map(p => {
+      if (p.risposte) return p;
+      return {
+        persona: {
+          id: p.id || p.persona_id,
+          eta: p.eta || p.age,
+          genere: p.genere || p.gender || 'M',
+          regione_it: p.regione_it || p.regione_italiana || p.citta,
+          specializzazione: p.specializzazione || p.tipo_installazioni || 'Misto',
+          anni_att: p.anni_att || p.anni_attivita,
+        },
+        risposte: {
+          tipo_installazioni: p.tipo_installazioni,
+          prima_associazione: p.prima_associazione,
+          uso_prodotti: p.uso_prodotti,
+          prodotti_usati: p.prodotti_usati,
+          valutazione_qualita: p.valutazione_qualita,
+          valutazione_facilita: p.valutazione_facilita,
+          valutazione_prezzo: p.valutazione_prezzo,
+          valutazione_disponibilita: p.valutazione_disponibilita,
+          valutazione_assistenza: p.valutazione_assistenza,
+          valutazione_formazione: p.valutazione_formazione,
+          nps: p.nps,
+          competitor_usati: p.competitor_usati,
+          barriera_non_utilizzo: p.barriera_non_utilizzo,
+          leva_attivazione: p.leva_attivazione,
+          driver_scelta: p.driver_scelta,
+          canali_informazione: p.canali_informazione,
+          contenuto_preferito: p.contenuto_preferito,
+          anni_attivita: p.anni_attivita || p.anni_att,
+          regione: p.regione,
+        },
+      };
+    });
+    console.log('[dtwin] sample profile[0]:', JSON.stringify(profiles[0]).substring(0, 300));
 
     // ── Step 3: persist to DB ─────────────────────────────────────────────
     const ins = db.prepare(`INSERT INTO dtwin_profiles (
