@@ -89,10 +89,21 @@ async function groq(system, user, maxTokens, temp = 0.7) {
       });
       return r.choices[0].message.content;
     } catch (err) {
-      if (err.status === 429 && model !== 'llama-3.1-8b-instant') continue;
+      if ((err.status === 429 || err.status === 503) && model !== 'llama-3.1-8b-instant') continue;
       throw err;
     }
   }
+}
+
+// Fast variant — uses 8b directly (interviews need speed, not power)
+async function groqFast(system, user, maxTokens, temp = 0.8) {
+  const r = await client.chat.completions.create({
+    model: 'llama-3.1-8b-instant',
+    max_tokens: maxTokens,
+    temperature: temp,
+    messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+  });
+  return r.choices[0].message.content;
 }
 
 function parseJSONObjects(raw) {
@@ -155,7 +166,7 @@ Compila questo JSON (tutti i campi, rispetta i valori ammessi):
 {"prima_associazione":"...","uso_prodotti":"Sì|No","prodotti_usati":"stringa o null","valutazione_qualita":1-5|null,"valutazione_facilita":1-5|null,"valutazione_prezzo":1-5|null,"valutazione_disponibilita":1-5|null,"valutazione_assistenza":1-5|null,"valutazione_formazione":1-5|null,"nps":0-10|null,"competitor_usati":"stringa o null","barriera_non_utilizzo":"stringa o null","leva_attivazione":"stringa o null","driver_scelta":"stringa","canali_informazione":"stringa","contenuto_preferito":"stringa"}`;
 
   try {
-    const raw = await groq(systemMsg, userMsg, 420, 0.8);
+    const raw = await groqFast(systemMsg, userMsg, 420);
     const m = raw.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('no JSON in response');
     const parsed = JSON.parse(m[0]);
@@ -198,11 +209,20 @@ router.delete('/twins/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/dtwin/check — verifica configurazione GROQ key
+router.get('/check', (req, res) => {
+  const hasKey = !!(process.env.GROQ_API_KEY);
+  res.json({ ready: hasKey, message: hasKey ? 'OK' : 'GROQ_API_KEY non configurata. Aggiungila nelle variabili d\'ambiente Railway.' });
+});
+
 // POST /api/dtwin/generate
 router.post('/generate', async (req, res) => {
   const { objective, industry, targetAge, location } = req.body;
   if (!objective || objective.trim().length < 10) {
     return res.status(400).json({ error: 'Descrivi l\'obiettivo (min 10 caratteri)' });
+  }
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: 'GROQ_API_KEY non configurata. Aggiungila nelle variabili d\'ambiente del server (Railway → Variables).' });
   }
 
   try {
@@ -210,15 +230,15 @@ router.post('/generate', async (req, res) => {
     const analysisRaw = await groq(
       'Ricercatore di mercato HVAC italiano. Calcola n=z²p(1-p)/e². Esplorativa→20, descrittiva→24. N tra 16 e 24. Solo JSON valido.',
       `Obiettivo: "${objective}"\nIndustry: ${industry||'Installatori IT'}\nTarget: ${targetAge||'tutti'}\nLocation: ${location||'Italia'}
-JSON: {"n":<16-24>,"rationale":"<2 frasi>","test_type":"esplorativa|descrittiva","stratification":{"geographic":{"Nord-Ovest":<pct>,"Nord-Est":<pct>,"Centro":<pct>,"Sud e Isole":<pct>},"specialty":{"Misto":<pct>,"Riscaldamento":<pct>,"Idrosanitario":<pct>,"Climatizzazione":<pct>},"giacomini_users_pct":<25-45>}}`,
+JSON: {"n":<10-16>,"rationale":"<2 frasi>","test_type":"esplorativa|descrittiva","stratification":{"geographic":{"Nord-Ovest":<pct>,"Nord-Est":<pct>,"Centro":<pct>,"Sud e Isole":<pct>},"specialty":{"Misto":<pct>,"Riscaldamento":<pct>,"Idrosanitario":<pct>,"Climatizzazione":<pct>},"giacomini_users_pct":<25-45>}}`,
       500
     );
 
     let analysis;
     try { const m = analysisRaw.match(/\{[\s\S]*\}/); analysis = JSON.parse(m ? m[0] : analysisRaw); }
-    catch { analysis = { n: 20, rationale: 'Campione esplorativo n=20.', test_type: 'esplorativa', stratification: { geographic: { 'Nord-Ovest': 28, 'Nord-Est': 17, 'Centro': 25, 'Sud e Isole': 30 }, specialty: { Misto: 40, Riscaldamento: 30, Idrosanitario: 20, Climatizzazione: 10 }, giacomini_users_pct: 38 } }; }
+    catch { analysis = { n: 12, rationale: 'Campione esplorativo n=12.', test_type: 'esplorativa', stratification: { geographic: { 'Nord-Ovest': 28, 'Nord-Est': 17, 'Centro': 25, 'Sud e Isole': 30 }, specialty: { Misto: 40, Riscaldamento: 30, Idrosanitario: 20, Climatizzazione: 10 }, giacomini_users_pct: 38 } }; }
 
-    const n = Math.min(Math.max(parseInt(analysis.n) || 20, 16), 24);
+    const n = Math.min(Math.max(parseInt(analysis.n) || 12, 10), 16);
     const strat = analysis.stratification || {};
 
     const sessRow = db.prepare('INSERT INTO twin_sessions (objective,industry,target_age,location,rationale,stratification) VALUES (?,?,?,?,?,?)').run(objective, industry||'', targetAge||'', location||'', analysis.rationale||'', JSON.stringify(strat));
@@ -236,7 +256,7 @@ Genera ESATTAMENTE ${n} profili. Array JSON, ogni oggetto ha questi campi:
 valori regione: "Nord-Ovest"|"Nord-Est"|"Centro"|"Sud e Isole"
 valori tipo_installazioni: "Riscaldamento"|"Climatizzazione"|"Idrosanitario"|"Misto"
 valori anni_attivita: "Meno di 3 anni"|"Da 3 a 10 anni"|"Da 10 a 20 anni"|"Oltre 20 anni"`,
-      2800
+      2200
     );
 
     let personas = parseJSONObjects(personasRaw);

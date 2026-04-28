@@ -731,6 +731,13 @@
       Descrive l'obiettivo dell'analisi: il sistema calcola il campione sintetico minimo necessario con formula statistica (n = z²·p·(1-p)/e²), genera profili coerenti con la distribuzione reale degli installatori italiani e li salva per confronto con i dati reali.
     </p>
 
+    <!-- GROQ key warning -->
+    <div id="dt-nokey-warn" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e">
+      ⚠ <strong>GROQ_API_KEY non configurata.</strong> La generazione D-Twin richiede una chiave Groq gratuita.
+      Aggiungila su Railway → Variables → <code>GROQ_API_KEY</code>.
+      Chiave gratuita (100k token/giorno): <strong>console.groq.com</strong>
+    </div>
+
     <!-- Form -->
     <div style="background:var(--gray-sub);border:1px solid var(--gray-border);border-radius:10px;padding:20px;margin-bottom:20px">
       <div style="margin-bottom:14px">
@@ -926,8 +933,18 @@
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      if (tab.dataset.tab === 'dtwin') checkGroqKey();
     });
   });
+
+  async function checkGroqKey() {
+    try {
+      const r = await fetch('/api/dtwin/check');
+      const d = await r.json();
+      document.getElementById('dt-nokey-warn').style.display = d.ready ? 'none' : 'block';
+      document.getElementById('dt-generate-btn').disabled = !d.ready;
+    } catch {}
+  }
 
   // --- Chart instances ---
   let chartAssociation = null;
@@ -1302,7 +1319,10 @@
           location: document.getElementById('dt-location').value,
         }),
       });
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); } catch {
+        throw new Error('Il server ha impiegato troppo tempo (timeout Railway 60s). Riprova — la generazione è stata ottimizzata per completarsi in ~30s.');
+      }
       if (!res.ok) throw new Error(data.error || 'Errore generazione');
       clearInterval(stepTimer);
       renderDTWIN(data);
@@ -1310,7 +1330,9 @@
     } catch (e) {
       clearInterval(stepTimer);
       const msg = e.message || '';
-      if (msg.includes('429') || msg.includes('Rate limit')) {
+      if (msg.includes('503') || msg.includes('GROQ_API_KEY')) {
+        document.getElementById('dt-nokey-warn').style.display = 'block';
+      } else if (msg.includes('429') || msg.includes('Rate limit')) {
         alert('Limite giornaliero Groq raggiunto (100k token/giorno). Riprova domani o aggiorna a Groq Dev Tier su console.groq.com.');
       } else {
         alert('Errore generazione: ' + msg);
