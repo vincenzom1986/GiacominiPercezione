@@ -310,7 +310,7 @@
     /* ── DT PROFILE CARDS ── */
     .dt-cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 14px;
       margin-bottom: 8px;
     }
@@ -386,6 +386,94 @@
 
     .dt-card-use.yes { background: #dcfce7; color: #15803d; }
     .dt-card-use.no  { background: #fee2e2; color: #b91c1c; }
+
+    .dt-card-nome {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 1px;
+    }
+
+    .dt-card-backstory {
+      display: none;
+      text-align: left;
+      font-size: 11px;
+      color: #555;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 8px;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .dt-card-backstory.open { display: block; }
+
+    .dt-card-toggle {
+      background: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 8px;
+      font-family: inherit;
+      margin-top: 5px;
+      width: 100%;
+    }
+
+    .dt-card-toggle:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── TWIN REGISTRY ── */
+    .registry-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .registry-card {
+      border: 1px solid var(--gray-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      background: var(--gray-sub);
+      font-size: 12px;
+    }
+
+    .registry-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .registry-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .registry-name { font-weight: 700; font-size: 13px; color: var(--text); }
+    .registry-sub  { font-size: 11px; color: var(--text-muted); }
+
+    .registry-backstory {
+      font-size: 11px;
+      color: #555;
+      line-height: 1.5;
+      border-top: 1px solid #e8e8e8;
+      padding-top: 8px;
+      margin-top: 6px;
+    }
+
+    .registry-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      border-top: 1px solid #e8e8e8;
+      padding-top: 8px;
+    }
 
     /* ── POPULATION COMPARISON ── */
     .pop-grid {
@@ -624,6 +712,19 @@
 
 <!-- TAB 2: DIGITAL TWIN -->
 <div class="tab-content" id="tab-dtwin">
+
+  <!-- Registry section -->
+  <div class="section" id="dt-registry-section" style="display:none">
+    <div class="section-title">Registro D-Twin <span class="badge" id="registry-badge">0 profili</span></div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6">
+      Profili sintetici persistenti generati nelle sessioni precedenti. Ogni twin conserva storia, personalità e risposte survey accumulate nel tempo.
+    </p>
+    <div class="registry-grid" id="registry-grid"></div>
+    <div style="margin-top:12px;text-align:right">
+      <button onclick="loadTwinRegistry()" style="background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;font-family:inherit">↻ Aggiorna registro</button>
+    </div>
+  </div>
+
   <div class="section">
     <div class="section-title">Generatore Digital Twin <span class="badge" id="dt-badge" style="display:none"></span></div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.6">
@@ -1205,6 +1306,7 @@
       if (!res.ok) throw new Error(data.error || 'Errore generazione');
       clearInterval(stepTimer);
       renderDTWIN(data);
+      loadTwinRegistry();
     } catch (e) {
       clearInterval(stepTimer);
       const msg = e.message || '';
@@ -1356,11 +1458,11 @@
 
     const cardsGrid = document.getElementById('dt-cards-grid');
     document.getElementById('dt-cards-count').textContent = profiles.length + ' profili';
-    cardsGrid.innerHTML = profiles.map(p => {
+    cardsGrid.innerHTML = profiles.map((p, idx) => {
       const pe = p.persona || {};
       const r  = p.risposte || {};
       const nps = r.nps;
-      const initials = pe.id ? pe.id.replace('DT_', '') : '??';
+      const initials = pe.nome ? pe.nome.charAt(0).toUpperCase() : (pe.id ? pe.id.replace('DT_', '') : '??');
       const eta  = pe.eta ? pe.eta + ' anni' : '–';
       const reg  = pe.regione_it || r.regione || '–';
       const spec = r.tipo_installazioni || pe.specializzazione || '–';
@@ -1368,14 +1470,22 @@
       const assoc = ASSOC_SHORT[r.prima_associazione] || r.prima_associazione || '–';
       const usaGiac = r.uso_prodotti || '–';
       const npsColor = AVATAR_COLORS_NPS(nps);
+      const cardId = 'card-bs-' + idx;
+      const hasBackstory = !!(pe.personalita || pe.relazione_brand);
 
       return `<div class="dt-card">
         <div class="dt-card-avatar" style="background:${npsColor}">${initials}</div>
         <div class="dt-card-id">${pe.id || '–'}</div>
+        <div class="dt-card-nome">${pe.nome || '–'}</div>
         <div class="dt-card-name">${eta} · ${reg}</div>
         <div class="dt-card-meta">${spec}<br><span style="font-size:10px;color:var(--text-light)">${anni}</span></div>
         <div class="dt-card-assoc">"${assoc}"</div>
-        <div class="dt-card-footer">
+        ${hasBackstory ? `<button class="dt-card-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▴ Nascondi':'▾ Backstory'">▾ Backstory</button>
+        <div class="dt-card-backstory" id="${cardId}">
+          ${pe.personalita ? '<p style="margin-bottom:5px"><strong>Profilo:</strong> ' + pe.personalita + '</p>' : ''}
+          ${pe.relazione_brand ? '<p><strong>Giacomini:</strong> ' + pe.relazione_brand + '</p>' : ''}
+        </div>` : ''}
+        <div class="dt-card-footer" style="margin-top:${hasBackstory ? '8' : '0'}px">
           <span class="dt-card-use ${usaGiac === 'Sì' ? 'yes' : 'no'}">${usaGiac === 'Sì' ? '✓ Usa Giacomini' : '✕ Non usa'}</span>
           <span style="font-size:13px;font-weight:700;color:${npsColor}">${nps != null ? 'NPS ' + nps : '–'}</span>
         </div>
@@ -1535,36 +1645,8 @@
   async function loadDTSession(id) {
     const res = await fetch('/api/dtwin/results/' + id);
     const data = await res.json();
-    const profiles = (data.profiles || []).map(p => {
-      let persona = {};
-      try { persona = JSON.parse(p.persona_json || '{}'); } catch(e) {}
-      // DB row already has all survey fields at top level — wrap correctly
-      return {
-        persona,
-        risposte: {
-          tipo_installazioni: p.tipo_installazioni,
-          prima_associazione: p.prima_associazione,
-          uso_prodotti: p.uso_prodotti,
-          prodotti_usati: p.prodotti_usati,
-          valutazione_qualita: p.valutazione_qualita,
-          valutazione_facilita: p.valutazione_facilita,
-          valutazione_prezzo: p.valutazione_prezzo,
-          valutazione_disponibilita: p.valutazione_disponibilita,
-          valutazione_assistenza: p.valutazione_assistenza,
-          valutazione_formazione: p.valutazione_formazione,
-          nps: p.nps,
-          competitor_usati: p.competitor_usati,
-          barriera_non_utilizzo: p.barriera_non_utilizzo,
-          leva_attivazione: p.leva_attivazione,
-          driver_scelta: p.driver_scelta,
-          canali_informazione: p.canali_informazione,
-          contenuto_preferito: p.contenuto_preferito,
-          anni_attivita: p.anni_attivita,
-          regione: p.regione,
-        },
-      };
-    });
-    renderDTWIN({ profiles, rationale: data.session.rationale, n: profiles.length, testType: 'salvata' });
+    const profiles = (data.profiles || []).map(normalizeProfile);
+    renderDTWIN({ profiles, rationale: data.session?.rationale, n: profiles.length, testType: 'salvata' });
     document.getElementById('dt-sessions-list').style.display = 'none';
   }
 
@@ -1574,9 +1656,70 @@
     btn.closest('div[style]').remove();
   }
 
+  async function deleteTwin(id, btn) {
+    if (!confirm('Eliminare questo D-Twin dal registro? L\'operazione rimuove anche le sue risposte survey.')) return;
+    await fetch('/api/dtwin/twins/' + id, { method: 'DELETE' });
+    btn.closest('.registry-card').remove();
+    const grid = document.getElementById('registry-grid');
+    const badge = document.getElementById('registry-badge');
+    badge.textContent = grid.children.length + ' profili';
+    if (!grid.children.length) document.getElementById('dt-registry-section').style.display = 'none';
+  }
+
+  async function loadTwinRegistry() {
+    try {
+      const res = await fetch('/api/dtwin/twins');
+      const twins = await res.json();
+      const section = document.getElementById('dt-registry-section');
+      const grid = document.getElementById('registry-grid');
+      const badge = document.getElementById('registry-badge');
+
+      if (!twins.length) { section.style.display = 'none'; return; }
+      section.style.display = 'block';
+      badge.textContent = twins.length + ' profili';
+
+      const npsColor = (nps) => {
+        if (nps == null) return '#94a3b8';
+        if (nps >= 9) return '#16a34a';
+        if (nps >= 7) return '#d97706';
+        return '#dc2626';
+      };
+
+      grid.innerHTML = twins.map(t => {
+        const initial = (t.nome || '?').charAt(0).toUpperCase();
+        const color   = npsColor(t.last_nps);
+        const usoBadge = t.last_uso === 'Sì'
+          ? '<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#15803d">✓ Usa</span>'
+          : '<span style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700;background:#fee2e2;color:#b91c1c">✕ Non usa</span>';
+        const npsHtml = t.last_nps != null
+          ? `<span style="font-weight:700;color:${color}">NPS ${t.last_nps}</span>`
+          : '<span style="color:#aaa">No intervista</span>';
+        return `<div class="registry-card">
+          <div class="registry-card-header">
+            <div class="registry-avatar" style="background:${color}">${initial}</div>
+            <div>
+              <div class="registry-name">${t.nome || '–'}, ${t.eta || '–'} anni</div>
+              <div class="registry-sub">${t.regione_it || t.regione || '–'} · ${t.tipo_installazioni || '–'} · ${t.anni_attivita || '–'}</div>
+            </div>
+          </div>
+          ${t.personalita ? `<div class="registry-backstory"><strong>Profilo:</strong> ${t.personalita}</div>` : ''}
+          ${t.relazione_brand ? `<div class="registry-backstory" style="margin-top:4px;border-top:none;padding-top:0"><strong>Giacomini:</strong> ${t.relazione_brand}</div>` : ''}
+          ${t.last_assoc ? `<div style="font-size:11px;font-style:italic;color:#666;margin-top:8px">"${t.last_assoc}"</div>` : ''}
+          <div class="registry-footer">
+            <div style="display:flex;gap:8px;align-items:center">${usoBadge} ${npsHtml}</div>
+            <button onclick="deleteTwin(${t.id}, this)" style="background:none;border:1px solid #ddd;padding:3px 10px;border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit;color:var(--text-muted)">✕</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      console.error('Registry load error:', e);
+    }
+  }
+
   // --- Init & polling ---
   loadSurvey();
   loadBrandwatch();
+  loadTwinRegistry();
   setInterval(loadSurvey, 30000);
 </script>
 </body>
